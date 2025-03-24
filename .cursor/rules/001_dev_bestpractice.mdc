@@ -1,0 +1,452 @@
+---
+description: this file explains best practices. please always refer to this file.
+globs: *
+alwaysApply: true
+---
+
+# 001_dev_bestpractice.mdc
+- このファイルが読み込まれたら「001_dev_bestpractice.mdcを読み込みました！」と作業着手前にユーザーに必ず伝えてください。
+
+## 基本原則
+以下のルールを遵守して下さい。
+
+### 1. コミュニケーション
+- ユーザーとのコミュニケーションは常に日本語でお願いします。
+
+### 2. 重複実装の防止
+- 実装前に以下の確認を行ってください：
+    - 既存の類似機能の有無
+    - 同名または類似名の関数やコンポーネント
+    - 重複するAPIエンドポイント
+    - 共通化可能な処理の特定
+
+### 3. 単一責任の原則
+- 関数が長くなりすぎた場合は、小さな関数に分割して下さい。
+- ファイルが大きくなりすぎた場合は、小さなファイルに分割して下さい。
+
+### 4. 参照禁止ファイル
+- .envファイルの作成・読込・編集・削除は厳禁です。ユーザーに作業を促して下さい。
+- .envファイルはプロジェクトルートに配置しています。
+
+--
+
+## プロジェクト構成
+本プロジェクトは、Go言語で作られた音楽アセットのテストプログラムです。
+
+## 作りたい機能
+
+今後作りたい機能の一覧です。
+
+### 音楽ファイルがない場合の対応
+
+現在音楽ファイルやmusicsディレクトリがない場合はエラーメッセージを表示するだけになっていますが、ディレクトリの内容を監視して、音楽ファイルが追加されたときに演奏を行うようにしたいです。
+
+
+## コミットルール概要
+
+このドキュメントでは、コミットの作成に関するベストプラクティスを説明します。
+
+### コミットの作成
+
+コミットを作成する際は、以下の手順に従います：
+
+1. 変更の確認
+
+   ```bash
+   # 未追跡ファイルと変更の確認
+   git status
+
+   # 変更内容の詳細確認
+   git diff
+
+   # コミットメッセージのスタイル確認
+   git log
+   ```
+
+2. 変更の分析
+
+   - 変更または追加されたファイルの特定
+   - 変更の性質（新機能、バグ修正、リファクタリングなど）の把握
+   - プロジェクトへの影響評価
+   - 機密情報の有無確認
+
+3. コミットメッセージの作成
+
+   - 「なぜ」に焦点を当てる
+   - 明確で簡潔な言葉を使用
+   - 変更の目的を正確に反映
+   - 一般的な表現を避ける
+
+4. コミットの実行
+
+   ```bash
+   # 関連ファイルのみをステージング
+   git add <files>
+
+   # コミットメッセージの作成（HEREDOCを使用）
+   git commit -m "$(cat <<'EOF'
+   ✨ add foo feature
+   - detail1
+   - detail2
+
+   EOF
+   )"
+   ```
+
+### 重要な注意事項
+
+1. コミット関連
+
+   - 可能な場合は `git commit -am` を使用
+   - 関係ないファイルは含めない
+   - 空のコミットは作成しない
+   - git設定は変更しない
+
+2. 避けるべき操作
+   - 対話的なgitコマンド（-iフラグ）の使用
+   - リモートリポジトリへの直接プッシュ
+   - git設定の変更
+
+### コミットメッセージの例
+
+コミットメッセージは英語で書いてください。
+
+以下の絵文字を最も近いコミットの種類によって設定してください。
+
+- ✨ 新機能を追加した
+- 🔧 既存機能を修正した
+- ♻️ リファクタリングをした
+- 🩹 バグを修正した
+- 🧪 テストコードを追加変更した
+- 📝 ドキュメントを変更した
+
+```bash
+# Adding new features
+✨ Introduce Result type for error handling
+
+# Improving existing features
+🔧 Enhance cache performance
+
+# Bug fixes
+🩹 Fix expired authentication token handling
+
+# Refactoring
+♻️ Abstract external dependencies using Adapter pattern
+
+# Adding tests
+🧪 Add tests for error cases in Result type
+
+# Updating documentation
+📝 Add best practices for error handling
+```
+
+## 言語とライブラリ
+
+### プログラミング言語
+
+Go言語を使用します。
+
+### ライブラリ
+
+Guiguiを使用します。
+
+https://github.com/hajimehoshi/guigui
+
+### Go言語のベストプラクティス
+
+以下は、Go言語を効果的に使用するためのベストプラクティスです。詳細については、[Effective Go](mdc:https:/go.dev/doc/effective_go)を参照してください。
+
+#### フォーマット
+
+- `gofmt`を使用してコードを標準的なスタイルでフォーマットします。
+- インデントにはタブを使用します。
+- 行の長さに制限はありませんが、長すぎる場合は適切に改行します。
+- 制御構造（`if`、`for`、`switch`）に括弧は不要です。
+
+#### コメント
+
+- OSSで公開するので、コメントは英語で書いてください。
+- パッケージや公開関数・型には適切なドキュメントコメント（`// comment`）を記述します。
+- パッケージのドキュメントはパッケージ宣言の前に記述します。
+- 宣言の直前のコメントは、その宣言のドキュメントとみなされます。
+
+#### 命名規則
+
+- **パッケージ名**: 小文字の単一語。アンダースコアやキャメルケースは避ける。
+- **変数名**: 短く簡潔に。スコープが小さければ短い名前で構いません。
+- **インターフェース名**: 単一のメソッドを表すインターフェースは`er`で終わるのが一般的（例：`Reader`、`Writer`）。
+- **可視性**: 大文字で始まる名前は公開（exported）、小文字は非公開（unexported）。
+- **MixedCaps**: 複数の単語からなる名前はアンダースコアではなくキャメルケース（`MixedCaps`または`mixedCaps`）を使用。
+
+#### コード構造
+
+- **エラーハンドリング**: エラーは戻り値として返し、無視せずに処理します。
+- **早期リターン**: 条件が満たされない場合は早期にリターンし、ネストを減らします。
+- **defer**: リソースの解放などはdeferステートメントを使用して確実に実行します。
+
+```go
+func CopyFile(src, dst string) error {
+    srcFile, err := os.Open(src)
+    if err != nil {
+        return err
+    }
+    defer srcFile.Close()
+
+    // 処理の続き...
+}
+```
+
+#### 並行処理
+
+- ゴルーチンは軽量なため、必要に応じて自由に使用できますが、終了条件を考慮します。
+- チャネルを使ってゴルーチン間で通信し、共有メモリへのアクセスを調整します。
+- `select`文を使用して複数のチャネル操作を効率的に処理します。
+
+#### インターフェース
+
+- 小さなインターフェースが最適です。単一のメソッドのインターフェースが理想的です。
+- インターフェースの実装は明示的な宣言なしに行われます。
+- インターフェースの受け入れ側ではなく、実装側で定義するのが良いプラクティスです。
+
+#### エラーハンドリング
+
+- エラーは単なる値として扱い、例外のように特別扱いしません。
+- エラーチェックを省略せず、適切に処理します。
+- 関数は多値返却を利用して、結果とエラーを共に返します。
+
+```go
+func doSomething() (Result, error) {
+    // ...
+}
+
+result, err := doSomething()
+if err != nil {
+    // エラー処理
+    return err
+}
+// 正常系の処理
+```
+
+#### テスト
+
+- 標準の`testing`パッケージを使用してテストを作成します。
+- テーブル駆動テストを活用して複数のケースを効率的にテストします。
+- ベンチマークとプロファイリングを活用してパフォーマンスを測定・改善します。
+- テストコードのパッケージはサフィックスに`_test`を付加します。例えば、`foo`パッケージのテストコードは`foo_test`パッケージになります。
+
+## テスト駆動開発 (TDD) ルール
+
+テスト駆動開発 (Test-Driven Development) は、コードを書く前にテストを書くソフトウェア開発手法です。この方法論を採用することで、設計の質を高め、バグの少ないコードを作成し、リファクタリングを安全に行うことができます。
+
+## TDDの基本サイクル
+
+```mermaid
+flowchart LR
+    Red[Red: 失敗するテストを書く] --> Green[Green: テストが通る最小限の実装をする]
+    Green --> Refactor[Refactor: コードを改善する]
+    Refactor --> Red
+```
+
+1. **Red**: まず失敗するテストを書く
+
+   - 必要な機能を明確に定義
+   - 期待する振る舞いをテストコードで表現
+   - この時点ではテストは失敗する（赤）
+
+2. **Green**: テストが通るように最小限の実装をする
+
+   - テストをパスさせるための最も単純な実装を行う
+   - パフォーマンスやコードの美しさより機能性を優先
+   - この時点でテストは成功する（緑）
+
+3. **Refactor**: コードをリファクタリングして改善する
+   - 重複を排除し、コードを整理
+   - 可読性とメンテナンス性を向上
+   - テストが依然として通ることを確認
+
+## TDDの重要な考え方
+
+- **テストは仕様である**: テストコードは実装の仕様を表現したもの
+- **最初に「何を」考え、次に「どのように」考える**: テストで「何を」達成すべきかを明確にしてから、「どのように」実装するかを考える
+- **小さなステップで進める**: 一度に大きな変更を行わず、小さな一歩ずつ進める
+- **テストカバレッジより意図のカバレッジを重視**: 単にコードラインをカバーするだけでなく、ビジネスロジックの意図を正確にテストする
+
+## テスト構造の原則
+
+### テーブル駆動テスト
+
+Goでは、テーブル駆動テストを使用することが推奨されます：
+
+```go
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name     string
+        a, b     int
+        expected int
+    }{
+        {
+            name:     "正の数の加算",
+            a:        2,
+            b:        3,
+            expected: 5,
+        },
+        {
+            name:     "負の数の加算",
+            a:        -2,
+            b:        -3,
+            expected: -5,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := Add(tt.a, tt.b)
+            if result != tt.expected {
+                t.Errorf("Add(%d, %d) = %d; want %d", tt.a, tt.b, result, tt.expected)
+            }
+        })
+    }
+}
+```
+
+### テスト名の命名規則
+
+良いテスト名は「状況→操作→結果」の形式で記述します：
+
+```go
+func TestUserService_正常なユーザーIDが与えられた場合にユーザー情報を返すこと(t *testing.T) {
+    // テスト本体
+}
+
+// または英語で
+func TestUserService_ShouldReturnUserWhenValidIDIsProvided(t *testing.T) {
+    // テスト本体
+}
+```
+
+## テストデータ
+
+Go言語では、パッケージ直下に`testdata`ディレクトリを作ると、それをテストデータ置き場とみなしてくれます。
+`testdata`ディレクトリに配置したファイルやディレクトリは、テストコードから`testdata`で始まる相対パスでアクセスできます。
+
+## モックとスタブ
+
+モックやスタブはテストコードごとに固有の物を作り、共有しないようにしてください。これは、モックやスタブの昨日を最小限に抑え、テストを堅牢なものにするのが目的です。
+
+### インターフェースのモック化
+
+```go
+// UserRepository インターフェース
+type UserRepository interface {
+    FindByID(id int) (*User, error)
+    Save(user *User) error
+}
+
+// モックの実装
+type MockUserRepository struct {
+    mock.Mock
+}
+
+func (m *MockUserRepository) FindByID(id int) (*User, error) {
+    args := m.Called(id)
+    if args.Get(0) == nil {
+        return nil, args.Error(1)
+    }
+    return args.Get(0).(*User), args.Error(1)
+}
+
+// テストでの使用
+func TestUserService_FindByID(t *testing.T) {
+    mockRepo := new(MockUserRepository)
+    mockUser := &User{ID: 1, Name: "Test User"}
+    
+    mockRepo.On("FindByID", 1).Return(mockUser, nil)
+    
+    service := NewUserService(mockRepo)
+    user, err := service.FindByID(1)
+    
+    assert.NoError(t, err)
+    assert.Equal(t, mockUser, user)
+    mockRepo.AssertExpectations(t)
+}
+```
+
+### テストヘルパー関数
+
+```go
+// テストユーティリティ
+func createTestUser(t *testing.T) *User {
+    t.Helper()
+    return &User{
+        ID:       1,
+        Name:     "Test User",
+        Email:    "test@example.com",
+        IsActive: true,
+    }
+}
+
+func TestUserActivation(t *testing.T) {
+    user := createTestUser(t)
+    user.IsActive = false
+    // テストの続き
+}
+```
+
+## コードカバレッジとレポーティング
+
+### Goのテストカバレッジ測定
+
+```bash
+# カバレッジ測定付きでテスト実行
+go test -cover ./...
+
+# カバレッジプロファイルの生成
+go test -coverprofile=coverage.out ./...
+
+# HTMLレポートの生成と表示
+go tool cover -html=coverage.out
+```
+
+## TDDの導入と習慣化
+
+### TDDへの段階的移行
+
+1. **既存コードへのテスト追加から始める**
+   - 重要な機能やバグ修正時にまずテストを追加
+
+2. **新機能開発にTDDを適用**
+   - 新しい機能開発時にはテストファーストで進める
+
+3. **チーム内でTDDセッションを実施**
+   - ペアプログラミングやモブプログラミングでTDDを実践
+
+### GitによるTDDの強化
+
+TDDのサイクルに合わせたコミット戦略：
+
+```bash
+# Red: 失敗するテストを書く
+git add user/service_test.go
+git commit -m "🧪 ユーザー有効化のテストを追加"
+
+# Green: 実装を行い、テストをパスさせる
+git add user/service.go
+git commit -m "✨ ユーザー有効化機能を実装"
+
+# Refactor: コードを改善する
+git add user/service.go
+git commit -m "♻️ ユーザー有効化ロジックを改善"
+```
+
+## まとめ
+
+テスト駆動開発は単なる手法ではなく、品質を重視する姿勢とフィードバックを素早く得るプロセスです。TDDを習慣化することで：
+
+1. **設計の質向上**: 必要な機能を明確に定義し、クリーンなAPIを設計
+2. **バグの削減**: エッジケースやエラー処理を事前に考慮
+3. **リファクタリングの安全性確保**: 既存機能を壊さずにコードを改善
+4. **開発速度の向上**: 初期は遅く感じても、長期的にはバグ修正時間の削減で効率化
+5. **ドキュメントとしての価値**: テストが仕様を示す生きたドキュメントとなる
+
+新たな機能開発や既存コードの修正時には、まずテストから始めることを心がけましょう。
+
