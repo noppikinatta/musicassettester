@@ -34,15 +34,23 @@ const (
 	StateInterval
 )
 
+// Player インターフェースは音声プレーヤーの操作を抽象化します
+type Player interface {
+	Play()
+	Pause()
+	Close() error
+	SetVolume(volume float64)
+}
+
 // PlayerFactory インターフェースは音声プレイヤーの生成を抽象化します
 type PlayerFactory interface {
-	NewPlayer(stream io.Reader) (*audio.Player, error)
+	NewPlayer(stream io.Reader) (Player, error)
 }
 
 // MusicPlayer handles music playback
 type MusicPlayer struct {
 	playerFactory PlayerFactory
-	player        *audio.Player
+	player        Player
 	audioStream   io.ReadSeeker
 	musicFiles    []string
 	currentIndex  int
@@ -307,4 +315,35 @@ func (p *MusicPlayer) SkipToNext() error {
 
 	// Load and play the selected music
 	return p.loadCurrentMusic()
+}
+
+// 以下はテスト用のヘルパーメソッド
+
+// SetTestMusicFiles は音楽ファイルリストをテスト用に直接設定します
+func (p *MusicPlayer) SetTestMusicFiles(files []string) {
+	p.musicFiles = files
+	if len(files) > 0 && p.currentIndex < 0 {
+		p.currentIndex = 0
+		p.currentPath = files[0]
+	}
+}
+
+// TestSetPaused はポーズ状態をテスト用に直接設定します
+func (p *MusicPlayer) TestSetPaused(paused bool) {
+	p.isPaused = paused
+}
+
+// TestSetState はプレイヤーの状態をテスト用に直接設定します
+func (p *MusicPlayer) TestSetState(state PlayerState) {
+	p.state = state
+}
+
+// TestSetPlayer はプレイヤーのインスタンスをテスト用に直接設定します
+func (p *MusicPlayer) TestSetPlayer(player Player) {
+	p.player = player
+}
+
+// TestSetCounter はカウンターをテスト用に直接設定します
+func (p *MusicPlayer) TestSetCounter(counter int) {
+	p.counter = counter
 }

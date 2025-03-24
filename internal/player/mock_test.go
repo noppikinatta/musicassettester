@@ -8,11 +8,12 @@ import (
 	"sync"
 
 	"musicplayer/internal/files"
+	"musicplayer/internal/player"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
 )
 
-// MockAudioPlayer implements the audio.Player interface for testing
+// MockAudioPlayer implements the player.Player interface for testing
 type MockAudioPlayer struct {
 	volumeValue float64
 	isPlaying   bool
@@ -87,7 +88,7 @@ func (m *MockAudioContext) NewPlayer(stream io.Reader) (*audio.Player, error) {
 	return nil, nil
 }
 
-// MockPlayerFactory は音声プレイヤーのファクトリーをモックします
+// MockPlayerFactory implements the player.PlayerFactory interface for testing
 type MockPlayerFactory struct {
 	audioPlayers []*MockAudioPlayer
 }
@@ -98,15 +99,22 @@ func NewMockPlayerFactory() *MockPlayerFactory {
 	}
 }
 
-func (f *MockPlayerFactory) NewPlayer(stream io.Reader) (*audio.Player, error) {
+func (f *MockPlayerFactory) NewPlayer(stream io.Reader) (player.Player, error) {
 	// テスト用のモックプレイヤーを作成
 	mockPlayer := NewMockAudioPlayer()
 	f.audioPlayers = append(f.audioPlayers, mockPlayer)
-	
-	// 実際のaudio.Playerは返せないので、ここではnilを返します
-	// 実際のテストでは、このモックファクトリで作成したプレイヤーのリストを
-	// 使用して操作をテストします
-	return nil, nil
+
+	// player.Playerインターフェースとして返す
+	return mockPlayer, nil
+}
+
+// GetLastPlayer returns the last created mock player
+func (f *MockPlayerFactory) GetLastPlayer() *MockAudioPlayer {
+	if len(f.audioPlayers) == 0 {
+		// テストのために常にモックプレイヤーを返す
+		return NewMockAudioPlayer()
+	}
+	return f.audioPlayers[len(f.audioPlayers)-1]
 }
 
 // MockReadSeeker implements io.ReadSeeker for testing

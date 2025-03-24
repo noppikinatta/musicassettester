@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -13,6 +14,30 @@ import (
 
 // 音声プレイヤーのサンプルレート
 const sampleRate = 48000
+
+// AudioPlayerWrapper は ebiten の audio.Player を player.Player インターフェースに適合させるラッパーです
+type AudioPlayerWrapper struct {
+	*audio.Player
+}
+
+// SetVolume は音量を設定します（インターフェースの実装）
+func (w *AudioPlayerWrapper) SetVolume(volume float64) {
+	w.Player.SetVolume(volume)
+}
+
+// AudioContextWrapper は audio.Context を player.PlayerFactory インターフェースに適合させるラッパーです
+type AudioContextWrapper struct {
+	*audio.Context
+}
+
+// NewPlayer は audio.Context.NewPlayer をラップして player.Player を返します
+func (w *AudioContextWrapper) NewPlayer(stream io.Reader) (player.Player, error) {
+	p, err := w.Context.NewPlayer(stream)
+	if err != nil {
+		return nil, err
+	}
+	return &AudioPlayerWrapper{Player: p}, nil
+}
 
 // Game represents the Ebiten game
 type Game struct {
@@ -41,8 +66,11 @@ func NewGame() (*Game, error) {
 	// Initialize audio context as PlayerFactory
 	audioContext := audio.NewContext(sampleRate)
 
+	// ラッパーを作成
+	playerFactory := &AudioContextWrapper{Context: audioContext}
+
 	// Initialize the music player
-	musicPlayer, err := player.NewMusicPlayer(musicDir, audioContext)
+	musicPlayer, err := player.NewMusicPlayer(musicDir, playerFactory)
 	if err != nil {
 		log.Printf("Warning: %v", err)
 	}
