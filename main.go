@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"image/color"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/audio"
+	"github.com/hajimehoshi/ebiten/v2/audio/mp3"
+	"github.com/hajimehoshi/ebiten/v2/audio/vorbis"
 	"github.com/hajimehoshi/ebiten/v2/audio/wav"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -252,16 +255,19 @@ func (s *Slider) Draw(context *guigui.Context, dst *ebiten.Image) {
 	vector.StrokeCircle(dst, thumbX, thumbY+thumbSize/2, thumbSize/2, 1, color.RGBA{150, 150, 150, 255}, false)
 }
 
-// Searches for .wav files in the specified directory
-func findWavFiles(dir string) ([]string, error) {
+// Searches for music files (.wav, .ogg, .mp3) in the specified directory
+func findMusicFiles(dir string) ([]string, error) {
 	var files []string
 
 	err := filepath.Walk(dir, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
 		}
-		if !info.IsDir() && strings.HasSuffix(strings.ToLower(info.Name()), ".wav") {
-			files = append(files, path)
+		if !info.IsDir() {
+			ext := strings.ToLower(filepath.Ext(info.Name()))
+			if ext == ".wav" || ext == ".ogg" || ext == ".mp3" {
+				files = append(files, path)
+			}
 		}
 		return nil
 	})
@@ -292,20 +298,43 @@ func (p *MusicPlayer) loadNextMusic() error {
 	// Prepare the index for the next track (return to 0 if it's the last track)
 	p.currentIndex = (p.currentIndex + 1) % len(p.musicFiles)
 
-	// Load the WAV file
+	// Load the music file
 	fileData, err := os.ReadFile(p.currentPath)
 	if err != nil {
 		return fmt.Errorf("failed to load file: %v", err)
 	}
 
-	// Create WAV decoder (read from byte array)
-	d, err := wav.DecodeWithSampleRate(sampleRate, bytes.NewReader(fileData))
+	// Create decoder based on file extension
+	ext := strings.ToLower(filepath.Ext(p.currentPath))
+
+	var stream io.ReadSeeker
+
+	switch ext {
+	case ".wav":
+		stream, err = wav.DecodeWithSampleRate(sampleRate, bytes.NewReader(fileData))
+	case ".ogg":
+		stream, err = vorbis.DecodeWithSampleRate(sampleRate, bytes.NewReader(fileData))
+	case ".mp3":
+		stream, err = mp3.DecodeWithSampleRate(sampleRate, bytes.NewReader(fileData))
+	default:
+		return fmt.Errorf("unsupported file format: %s", ext)
+	}
+
 	if err != nil {
-		return fmt.Errorf("failed to decode WAV: %v", err)
+		return fmt.Errorf("failed to decode %s: %v", ext, err)
 	}
 
 	// Create an infinite loop stream (without intro)
-	loopStream := audio.NewInfiniteLoop(d, d.Length())
+	var length int64
+	switch ext {
+	case ".wav":
+		length = stream.(*wav.Stream).Length()
+	case ".ogg":
+		length = stream.(*vorbis.Stream).Length()
+	case ".mp3":
+		length = stream.(*mp3.Stream).Length()
+	}
+	loopStream := audio.NewInfiniteLoop(stream, length)
 
 	// Create player
 	p.audioPlayer, err = p.audioContext.NewPlayer(loopStream)
@@ -324,14 +353,14 @@ func (p *MusicPlayer) loadNextMusic() error {
 func NewMusicPlayer() (*MusicPlayer, error) {
 	audioContext := audio.NewContext(sampleRate)
 
-	// Search for .wav files in the musics directory
-	musicFiles, err := findWavFiles("musics")
+	// Search for music files in the musics directory
+	musicFiles, err := findMusicFiles("musics")
 	if err != nil {
 		return nil, fmt.Errorf("failed to search for music files: %v", err)
 	}
 
 	if len(musicFiles) == 0 {
-		return nil, fmt.Errorf("no WAV files found in the musics directory")
+		return nil, fmt.Errorf("no music files found in the musics directory")
 	}
 
 	player := &MusicPlayer{
@@ -764,13 +793,13 @@ func (r *Root) Draw(context *guigui.Context, dst *ebiten.Image) {
 
 // Returns instruction message about required files
 func GetHowToUseMessage() string {
-	message := "Warning: WAV files are needed. Please place WAV files in the musics directory and run again.\n\n"
+	message := "Warning: Music files are needed. Please place WAV, OGG, or MP3 files in the musics directory and run again.\n\n"
 	message += "Example:\n"
 	message += "musics/\n"
 	message += "├── song1.wav\n"
-	message += "├── song2.wav\n"
+	message += "├── song2.mp3\n"
 	message += "└── album/\n"
-	message += "    ├── song3.wav\n"
+	message += "    ├── song3.ogg\n"
 	message += "    └── song4.wav\n"
 	return message
 }
@@ -787,14 +816,14 @@ func main() {
 		// Set warning message
 		root.warningMessage = GetHowToUseMessage()
 	} else {
-		// Check if there are any WAV files
-		musicFiles, err := findWavFiles("musics")
+		// Check if there are any music files
+		musicFiles, err := findMusicFiles("musics")
 		if err != nil {
 			log.Fatal("Failed to search for music files:", err)
 		}
 
 		if len(musicFiles) == 0 {
-			// Set warning message for no WAV files
+			// Set warning message for no music files
 			root.warningMessage = GetHowToUseMessage()
 		} else {
 			// Initialize music player
