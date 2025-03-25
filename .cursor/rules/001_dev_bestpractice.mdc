@@ -3,96 +3,86 @@ description: this file explains best practices. please always refer to this file
 globs: *
 alwaysApply: true
 ---
-
 # 001_dev_bestpractice.mdc
-- このファイルが読み込まれたら「001_dev_bestpractice.mdcを読み込みました！」と作業着手前にユーザーに必ず伝えてください。
+- When this file is loaded, the AI must inform the user by saying "001_dev_bestpractice.md has been loaded!" before starting any work.
 
-## 基本原則
-以下のルールを遵守して下さい。
+## Basic Principles
+Please follow these rules.
 
-### 1. コミュニケーション
-- ユーザーとのコミュニケーションは常に日本語でお願いします。
+### 1. Communication
+- Please communicate with users in the same language they use in their messages.
 
-### 2. 重複実装の防止
-- 実装前に以下の確認を行ってください：
-    - 既存の類似機能の有無
-    - 同名または類似名の関数やコンポーネント
-    - 重複するAPIエンドポイント
-    - 共通化可能な処理の特定
-
-### 3. 単一責任の原則
-- 関数が長くなりすぎた場合は、小さな関数に分割して下さい。
-- ファイルが大きくなりすぎた場合は、小さなファイルに分割して下さい。
-
-### 4. 参照禁止ファイル
-- .envファイルの作成・読込・編集・削除は厳禁です。ユーザーに作業を促して下さい。
-- .envファイルはプロジェクトルートに配置しています。
+### 2. Prevent Duplicate Implementation
+- Before implementation, please confirm:
+    - Existence of similar functionality
+    - Functions or components with same or similar names
+    - Duplicate API endpoints
+    - Identification of processes that can be shared
 
 --
 
-## プロジェクト構成
-本プロジェクトは、Go言語で作られた音楽アセットのテストプログラムです。
+## Project Structure
+This project is a music asset testing program written in Go.
 
-## 作りたい機能
+## Desired Features
 
-今後作りたい機能の一覧です。
+Here is a list of features we want to implement.
 
-### 音楽ファイルがない場合の対応
+### Handling Missing Music Files
 
-現在音楽ファイルやmusicsディレクトリがない場合はエラーメッセージを表示するだけになっていますが、ディレクトリの内容を監視して、音楽ファイルが追加されたときに演奏を行うようにしたいです。
+Currently, when there are no music files or music directory, we only display an error message. We want to monitor the directory contents and start playing when music files are added.
 
+## Commit Messages
 
-## コミットメッセージ
+Do not commit changes automatically. Instead, propose commit messages.
 
-変更内容は勝手にコミットしないでください。代わりに、コミットメッセージの提案を行なってください。
+### Creating Commit Messages
 
-### コミットメッセージの作成
+When creating commit messages, follow these steps:
 
-コミットメッセージを作成する際は、以下の手順に従います：
-
-1. 変更の確認
+1. Check Changes
 
    ```bash
-   # 未追跡ファイルと変更の確認
+   # Check untracked files and changes
    git status
 
-   # 変更内容の詳細確認
+   # Check change details
    git diff
 
-   # コミットメッセージのスタイル確認
+   # Check commit message style
    git log
    ```
 
-2. 変更の分析
+2. Analyze Changes
 
-   - 変更または追加されたファイルの特定
-   - 変更の性質（新機能、バグ修正、リファクタリングなど）の把握
-   - プロジェクトへの影響評価
-   - 機密情報の有無確認
+   - Identify changed or added files
+   - Understand the nature of changes (new features, bug fixes, refactoring, etc.)
+   - Evaluate impact on the project
+   - Check for sensitive information
 
-3. コミットメッセージの作成
+3. Create Commit Message
 
-   - 「なぜ」に焦点を当てる
-   - 明確で簡潔な言葉を使用
-   - 変更の目的を正確に反映
-   - 一般的な表現を避ける
+   - Focus on "why"
+   - Use clear and concise language
+   - Accurately reflect the purpose of changes
+   - Avoid generic expressions
 
-### 重要な注意事項
+### Important Notes
 
-コミットは実行しない。メッセージだけ作ってください。
+Do not execute commits. Only create messages.
 
-### コミットメッセージの例
+### Commit Message Examples
 
-コミットメッセージは英語で書いてください。
+Write commit messages in English.
 
-以下の絵文字を最も近いコミットの種類によって設定してください。
+Set the following emoji according to the most relevant type of commit:
 
-- ✨ 新機能を追加した
-- 🔧 既存機能を修正した
-- ♻️ リファクタリングをした
-- 🩹 バグを修正した
-- 🧪 テストコードを追加変更した
-- 📝 ドキュメントを変更した
+- ✨ Added new features
+- 🔧 Modified existing features
+- ♻️ Performed refactoring
+- 🩹 Fixed bugs
+- 🧪 Added or modified test code
+- 📝 Changed documentation
 
 ```bash
 # Adding new features
@@ -114,49 +104,49 @@ alwaysApply: true
 📝 Add best practices for error handling
 ```
 
-## 言語とライブラリ
+## Language and Libraries
 
-### プログラミング言語
+### Programming Language
 
-Go言語を使用します。
+We use Go.
 
-### ライブラリ
+### Libraries
 
-Guiguiを使用します。
+We use Guigui.
 
 https://github.com/hajimehoshi/guigui
 
-### Go言語のベストプラクティス
+### Go Best Practices
 
-以下は、Go言語を効果的に使用するためのベストプラクティスです。詳細については、[Effective Go](mdc:https:/go.dev/doc/effective_go)を参照してください。
+Here are best practices for effectively using Go. For details, refer to [Effective Go](mdc:https:/go.dev/doc/effective_go).
 
-#### フォーマット
+#### Formatting
 
-- `gofmt`を使用してコードを標準的なスタイルでフォーマットします。
-- インデントにはタブを使用します。
-- 行の長さに制限はありませんが、長すぎる場合は適切に改行します。
-- 制御構造（`if`、`for`、`switch`）に括弧は不要です。
+- Use `gofmt` to format code in standard style
+- Use tabs for indentation
+- No line length limit, but break appropriately if too long
+- Control structures (`if`, `for`, `switch`) don't need parentheses
 
-#### コメント
+#### Comments
 
-- OSSで公開するので、コメントは英語で書いてください。
-- パッケージや公開関数・型には適切なドキュメントコメント（`// comment`）を記述します。
-- パッケージのドキュメントはパッケージ宣言の前に記述します。
-- 宣言の直前のコメントは、その宣言のドキュメントとみなされます。
+- Write comments in English as this is an OSS project
+- Use appropriate doc comments (`// comment`) for packages and public functions/types
+- Package documentation goes before package declaration
+- Comments immediately preceding declarations are considered documentation for that declaration
 
-#### 命名規則
+#### Naming Conventions
 
-- **パッケージ名**: 小文字の単一語。アンダースコアやキャメルケースは避ける。
-- **変数名**: 短く簡潔に。スコープが小さければ短い名前で構いません。
-- **インターフェース名**: 単一のメソッドを表すインターフェースは`er`で終わるのが一般的（例：`Reader`、`Writer`）。
-- **可視性**: 大文字で始まる名前は公開（exported）、小文字は非公開（unexported）。
-- **MixedCaps**: 複数の単語からなる名前はアンダースコアではなくキャメルケース（`MixedCaps`または`mixedCaps`）を使用。
+- **Package Names**: Single lowercase word. Avoid underscores and camelCase
+- **Variable Names**: Short and concise. Short names are fine for small scopes
+- **Interface Names**: Single-method interfaces typically end in `er` (e.g., `Reader`, `Writer`)
+- **Visibility**: Names starting with uppercase are exported, lowercase are unexported
+- **MixedCaps**: Use camelCase (`MixedCaps` or `mixedCaps`) for multi-word names, not underscores
 
-#### コード構造
+#### Code Structure
 
-- **エラーハンドリング**: エラーは戻り値として返し、無視せずに処理します。
-- **早期リターン**: 条件が満たされない場合は早期にリターンし、ネストを減らします。
-- **defer**: リソースの解放などはdeferステートメントを使用して確実に実行します。
+- **Error Handling**: Return errors as values and handle them, don't ignore
+- **Early Return**: Return early when conditions are not met to reduce nesting
+- **defer**: Use defer statements for resource cleanup to ensure execution
 
 ```go
 func CopyFile(src, dst string) error {
@@ -166,27 +156,27 @@ func CopyFile(src, dst string) error {
     }
     defer srcFile.Close()
 
-    // 処理の続き...
+    // Rest of processing...
 }
 ```
 
-#### 並行処理
+#### Concurrency
 
-- ゴルーチンは軽量なため、必要に応じて自由に使用できますが、終了条件を考慮します。
-- チャネルを使ってゴルーチン間で通信し、共有メモリへのアクセスを調整します。
-- `select`文を使用して複数のチャネル操作を効率的に処理します。
+- Goroutines are lightweight, use freely when needed but consider termination conditions
+- Use channels for communication between goroutines and coordinate shared memory access
+- Use `select` statements to efficiently handle multiple channel operations
 
-#### インターフェース
+#### Interfaces
 
-- 小さなインターフェースが最適です。単一のメソッドのインターフェースが理想的です。
-- インターフェースの実装は明示的な宣言なしに行われます。
-- インターフェースの受け入れ側ではなく、実装側で定義するのが良いプラクティスです。
+- Small interfaces are optimal. Single-method interfaces are ideal
+- Interface implementation is implicit, no explicit declaration needed
+- Best practice is to define interfaces in the implementation side, not the accepting side
 
-#### エラーハンドリング
+#### Error Handling
 
-- エラーは単なる値として扱い、例外のように特別扱いしません。
-- エラーチェックを省略せず、適切に処理します。
-- 関数は多値返却を利用して、結果とエラーを共に返します。
+- Treat errors as simple values, not special like exceptions
+- Don't skip error checks, handle appropriately
+- Functions use multiple return values to return both results and errors
 
 ```go
 func doSomething() (Result, error) {
@@ -195,61 +185,61 @@ func doSomething() (Result, error) {
 
 result, err := doSomething()
 if err != nil {
-    // エラー処理
+    // Error handling
     return err
 }
-// 正常系の処理
+// Normal processing
 ```
 
-#### テスト
+#### Testing
 
-- 標準の`testing`パッケージを使用してテストを作成します。
-- テーブル駆動テストを活用して複数のケースを効率的にテストします。
-- ベンチマークとプロファイリングを活用してパフォーマンスを測定・改善します。
-- テストコードのパッケージはサフィックスに`_test`を付加します。例えば、`foo`パッケージのテストコードは`foo_test`パッケージになります。
+- Use standard `testing` package to create tests
+- Utilize table-driven tests to efficiently test multiple cases
+- Use benchmarking and profiling to measure and improve performance
+- Test code packages should have suffix `_test`. For example, test code for `foo` package should be in `foo_test` package
 
-## テスト駆動開発 (TDD) ルール
+## Test-Driven Development (TDD) Rules
 
-テスト駆動開発 (Test-Driven Development) は、コードを書く前にテストを書くソフトウェア開発手法です。この方法論を採用することで、設計の質を高め、バグの少ないコードを作成し、リファクタリングを安全に行うことができます。
+Test-Driven Development is a software development methodology where you write tests before writing code. This approach helps improve design quality, reduce bugs, and safely perform refactoring.
 
-## TDDの基本サイクル
+## Basic TDD Cycle
 
 ```mermaid
 flowchart LR
-    Red[Red: 失敗するテストを書く] --> Green[Green: テストが通る最小限の実装をする]
-    Green --> Refactor[Refactor: コードを改善する]
+    Red[Red: Write failing test] --> Green[Green: Write minimal implementation to pass]
+    Green --> Refactor[Refactor: Improve code]
     Refactor --> Red
 ```
 
-1. **Red**: まず失敗するテストを書く
+1. **Red**: First write a failing test
 
-   - 必要な機能を明確に定義
-   - 期待する振る舞いをテストコードで表現
-   - この時点ではテストは失敗する（赤）
+   - Clearly define required functionality
+   - Express expected behavior in test code
+   - Test fails at this point (red)
 
-2. **Green**: テストが通るように最小限の実装をする
+2. **Green**: Implement minimum code to pass test
 
-   - テストをパスさせるための最も単純な実装を行う
-   - パフォーマンスやコードの美しさより機能性を優先
-   - この時点でテストは成功する（緑）
+   - Write simplest implementation to pass test
+   - Prioritize functionality over performance or code beauty
+   - Test passes at this point (green)
 
-3. **Refactor**: コードをリファクタリングして改善する
-   - 重複を排除し、コードを整理
-   - 可読性とメンテナンス性を向上
-   - テストが依然として通ることを確認
+3. **Refactor**: Improve code through refactoring
+   - Eliminate duplication and organize code
+   - Improve readability and maintainability
+   - Ensure tests still pass
 
-## TDDの重要な考え方
+## Important TDD Concepts
 
-- **テストは仕様である**: テストコードは実装の仕様を表現したもの
-- **最初に「何を」考え、次に「どのように」考える**: テストで「何を」達成すべきかを明確にしてから、「どのように」実装するかを考える
-- **小さなステップで進める**: 一度に大きな変更を行わず、小さな一歩ずつ進める
-- **テストカバレッジより意図のカバレッジを重視**: 単にコードラインをカバーするだけでなく、ビジネスロジックの意図を正確にテストする
+- **Tests are Specifications**: Test code expresses implementation specifications
+- **Think "What" First, Then "How"**: Use tests to clarify "what" should be achieved before thinking about "how" to implement
+- **Progress in Small Steps**: Don't make big changes at once, proceed step by step
+- **Focus on Intent Coverage Over Line Coverage**: Don't just cover code lines, accurately test business logic intent
 
-## テスト構造の原則
+## Test Structure Principles
 
-### テーブル駆動テスト
+### Table-Driven Tests
 
-Goでは、テーブル駆動テストを使用することが推奨されます：
+In Go, using table-driven tests is recommended:
 
 ```go
 func TestAdd(t *testing.T) {
@@ -259,13 +249,13 @@ func TestAdd(t *testing.T) {
         expected int
     }{
         {
-            name:     "正の数の加算",
+            name:     "Adding positive numbers",
             a:        2,
             b:        3,
             expected: 5,
         },
         {
-            name:     "負の数の加算",
+            name:     "Adding negative numbers",
             a:        -2,
             b:        -3,
             expected: -5,
@@ -283,40 +273,35 @@ func TestAdd(t *testing.T) {
 }
 ```
 
-### テスト名の命名規則
+### Test Name Conventions
 
-良いテスト名は「状況→操作→結果」の形式で記述します：
+Good test names follow the "situation → operation → result" format:
 
 ```go
-func TestUserService_正常なユーザーIDが与えられた場合にユーザー情報を返すこと(t *testing.T) {
-    // テスト本体
-}
-
-// または英語で
 func TestUserService_ShouldReturnUserWhenValidIDIsProvided(t *testing.T) {
-    // テスト本体
+    // Test body
 }
 ```
 
-## テストデータ
+## Test Data
 
-Go言語では、パッケージ直下に`testdata`ディレクトリを作ると、それをテストデータ置き場とみなしてくれます。
-`testdata`ディレクトリに配置したファイルやディレクトリは、テストコードから`testdata`で始まる相対パスでアクセスできます。
+In Go, if you create a `testdata` directory under a package, it's recognized as a test data location.
+Files and directories in the `testdata` directory can be accessed from test code using relative paths starting with `testdata`.
 
-## モックとスタブ
+## Mocks and Stubs
 
-モックやスタブはテストコードごとに固有の物を作り、共有しないようにしてください。これは、モックやスタブの昨日を最小限に抑え、テストを堅牢なものにするのが目的です。
+Create unique mocks and stubs for each test code, don't share them. This is to keep mock and stub functionality minimal and make tests robust.
 
-### インターフェースのモック化
+### Interface Mocking
 
 ```go
-// UserRepository インターフェース
+// UserRepository interface
 type UserRepository interface {
     FindByID(id int) (*User, error)
     Save(user *User) error
 }
 
-// モックの実装
+// Mock implementation
 type MockUserRepository struct {
     mock.Mock
 }
@@ -329,7 +314,7 @@ func (m *MockUserRepository) FindByID(id int) (*User, error) {
     return args.Get(0).(*User), args.Error(1)
 }
 
-// テストでの使用
+// Test usage
 func TestUserService_FindByID(t *testing.T) {
     mockRepo := new(MockUserRepository)
     mockUser := &User{ID: 1, Name: "Test User"}
@@ -345,10 +330,10 @@ func TestUserService_FindByID(t *testing.T) {
 }
 ```
 
-### テストヘルパー関数
+### Test Helper Functions
 
 ```go
-// テストユーティリティ
+// Test utilities
 func createTestUser(t *testing.T) *User {
     t.Helper()
     return &User{
@@ -362,65 +347,65 @@ func createTestUser(t *testing.T) *User {
 func TestUserActivation(t *testing.T) {
     user := createTestUser(t)
     user.IsActive = false
-    // テストの続き
+    // Rest of test
 }
 ```
 
-## コードカバレッジとレポーティング
+## Code Coverage and Reporting
 
-### Goのテストカバレッジ測定
+### Measuring Go Test Coverage
 
 ```bash
-# カバレッジ測定付きでテスト実行
+# Run tests with coverage measurement
 go test -cover ./...
 
-# カバレッジプロファイルの生成
+# Generate coverage profile
 go test -coverprofile=coverage.out ./...
 
-# HTMLレポートの生成と表示
+# Generate and view HTML report
 go tool cover -html=coverage.out
 ```
 
-## TDDの導入と習慣化
+## TDD Introduction and Habituation
 
-### TDDへの段階的移行
+### Gradual TDD Migration
 
-1. **既存コードへのテスト追加から始める**
-   - 重要な機能やバグ修正時にまずテストを追加
+1. **Start by Adding Tests to Existing Code**
+   - First add tests for important features or bug fixes
 
-2. **新機能開発にTDDを適用**
-   - 新しい機能開発時にはテストファーストで進める
+2. **Apply TDD to New Feature Development**
+   - Use test-first approach when developing new features
 
-3. **チーム内でTDDセッションを実施**
-   - ペアプログラミングやモブプログラミングでTDDを実践
+3. **Conduct TDD Sessions in Team**
+   - Practice TDD in pair programming or mob programming
 
-### GitによるTDDの強化
+### Enhancing TDD with Git
 
-TDDのサイクルに合わせたコミット戦略：
+TDD cycle-aligned commit strategy:
 
 ```bash
-# Red: 失敗するテストを書く
+# Red: Write failing test
 git add user/service_test.go
-git commit -m "🧪 ユーザー有効化のテストを追加"
+git commit -m "🧪 Add user activation test"
 
-# Green: 実装を行い、テストをパスさせる
+# Green: Implement and pass test
 git add user/service.go
-git commit -m "✨ ユーザー有効化機能を実装"
+git commit -m "✨ Implement user activation"
 
-# Refactor: コードを改善する
+# Refactor: Improve code
 git add user/service.go
-git commit -m "♻️ ユーザー有効化ロジックを改善"
+git commit -m "♻️ Improve user activation logic"
 ```
 
-## まとめ
+## Summary
 
-テスト駆動開発は単なる手法ではなく、品質を重視する姿勢とフィードバックを素早く得るプロセスです。TDDを習慣化することで：
+Test-Driven Development is not just a methodology but an attitude that prioritizes quality and a process to get quick feedback. By making TDD a habit:
 
-1. **設計の質向上**: 必要な機能を明確に定義し、クリーンなAPIを設計
-2. **バグの削減**: エッジケースやエラー処理を事前に考慮
-3. **リファクタリングの安全性確保**: 既存機能を壊さずにコードを改善
-4. **開発速度の向上**: 初期は遅く感じても、長期的にはバグ修正時間の削減で効率化
-5. **ドキュメントとしての価値**: テストが仕様を示す生きたドキュメントとなる
+1. **Improve Design Quality**: Clearly define required functionality and design clean APIs
+2. **Reduce Bugs**: Consider edge cases and error handling in advance
+3. **Ensure Safe Refactoring**: Improve code without breaking existing functionality
+4. **Increase Development Speed**: Though initially slower, efficiency improves through reduced bug fixing time
+5. **Value as Documentation**: Tests serve as living documentation showing specifications
 
-新たな機能開発や既存コードの修正時には、まずテストから始めることを心がけましょう。
+When developing new features or modifying existing code, remember to start with tests.
 
