@@ -7,50 +7,40 @@ import (
 	"testing"
 )
 
-// PlayerStateのエイリアスを定義して、テストで定数を使いやすくする
-const (
-	StateStopped      = player.PlayerState(0)
-	StatePlaying      = player.PlayerState(1)
-	StateFadingOut    = player.PlayerState(2)
-	StateInterval     = player.PlayerState(3)
-	StateInitializing = player.PlayerState(0) // StateStoppedと同じ値
-)
-
-// TestMainはテスト全体のセットアップを行います
+// TestMain handles the setup for all tests
 func TestMain(m *testing.M) {
-	// テストのセットアップを行う
-	// 追加のセットアップが必要な場合はここに記述
+	// Perform test setup
+	// Add additional setup here if needed
 
-	// テストを実行
+	// Run tests
 	code := m.Run()
 
-	// テストの後処理を行う
-	// 追加の後処理が必要な場合はここに記述
+	// Perform test cleanup
+	// Add additional cleanup here if needed
 
-	// プロセスを終了
 	os.Exit(code)
 }
 
-// テスト用のMusicPlayerを作成するヘルパー関数
+// Helper function to create a test MusicPlayer
 func createTestMusicPlayer(t *testing.T) (*player.MusicPlayer, *MockPlayerFactory) {
-	// テスト用の一時ディレクトリを作成
+	// Create a temporary directory for the test
 	tempDir, err := os.MkdirTemp("", "music-test")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(tempDir) })
 
-	// モックディレクトリとファクトリを作成
+	// Create mock directory and factory
 	mockDir := NewMockMusicDirectory(tempDir, []string{}, true)
 	mockFactory := NewMockPlayerFactory()
 
-	// プレイヤーを作成
+	// Create player
 	p, err := player.NewMusicPlayer(mockDir, mockFactory)
 	if err != nil {
 		t.Logf("Warning during player creation: %v", err)
 	}
 
-	// テスト用に音楽ファイルを追加 (実際にはファイルは作成しない)
+	// Add test music files to the player (actual files are not created)
 	p.SetTestMusicFiles([]string{
 		filepath.Join(tempDir, "test1.mp3"),
 		filepath.Join(tempDir, "test2.wav"),
@@ -67,11 +57,11 @@ func TestNewMusicPlayer(t *testing.T) {
 	}
 
 	state := p.GetState()
-	if state != StateStopped { // 初期状態はStoppedになる
-		t.Errorf("Expected state %d, got %d", StateStopped, state)
+	if state != player.StateStopped { // Initial state should be Stopped
+		t.Errorf("Expected state %d, got %d", player.StateStopped, state)
 	}
 
-	// ファクトリを通じてPlayerが作成されたことを確認
+	// Verify that player was created via the factory
 	mockPlayer := mockFactory.GetLastPlayer()
 	if mockPlayer == nil {
 		t.Error("Expected player to be created, but none was found")
@@ -91,7 +81,7 @@ func TestGetCurrentPath(t *testing.T) {
 	p, _ := createTestMusicPlayer(t)
 
 	path := p.GetCurrentPath()
-	// 最初は空か、テスト中に設定された値
+	// Initially empty or set during the test
 	t.Logf("Current path: %s", path)
 }
 
@@ -99,8 +89,8 @@ func TestGetState(t *testing.T) {
 	p, _ := createTestMusicPlayer(t)
 
 	state := p.GetState()
-	if state != StateStopped {
-		t.Errorf("Expected initial state to be StateStopped (%d), got %d", StateStopped, state)
+	if state != player.StateStopped {
+		t.Errorf("Expected initial state to be StateStopped (%d), got %d", player.StateStopped, state)
 	}
 }
 
@@ -117,7 +107,7 @@ func TestGetCounter(t *testing.T) {
 	p, _ := createTestMusicPlayer(t)
 
 	counter := p.GetCounter()
-	// 初期カウンターは0を期待
+	// Initial counter should be 0
 	if counter != 0 {
 		t.Errorf("Expected initial counter to be 0, got %d", counter)
 	}
@@ -126,13 +116,13 @@ func TestGetCounter(t *testing.T) {
 func TestLoopDurationMinutes(t *testing.T) {
 	p, _ := createTestMusicPlayer(t)
 
-	// デフォルト値の確認
+	// Verify default value
 	duration := p.GetLoopDurationMinutes()
 	if duration != 5.0 {
 		t.Errorf("Expected default loop duration to be 5.0 minutes, got %f", duration)
 	}
 
-	// 値を変更して確認
+	// Change value and verify
 	p.SetLoopDurationMinutes(10.0)
 	duration = p.GetLoopDurationMinutes()
 	if duration != 10.0 {
@@ -143,13 +133,13 @@ func TestLoopDurationMinutes(t *testing.T) {
 func TestIntervalSeconds(t *testing.T) {
 	p, _ := createTestMusicPlayer(t)
 
-	// デフォルト値の確認
+	// Verify default value
 	interval := p.GetIntervalSeconds()
 	if interval != 10.0 {
 		t.Errorf("Expected default interval to be 10.0 seconds, got %f", interval)
 	}
 
-	// 値を変更して確認
+	// Change value and verify
 	p.SetIntervalSeconds(15.0)
 	interval = p.GetIntervalSeconds()
 	if interval != 15.0 {
@@ -160,14 +150,14 @@ func TestIntervalSeconds(t *testing.T) {
 func TestSetCurrentIndex(t *testing.T) {
 	p, _ := createTestMusicPlayer(t)
 
-	// 有効なインデックスを設定
+	// Set a valid index
 	if len(p.GetMusicFiles()) > 0 {
 		err := p.SetCurrentIndex(0)
 		if err != nil {
 			t.Errorf("Expected SetCurrentIndex(0) to succeed, got error: %v", err)
 		}
 
-		// 範囲外のインデックスを設定
+		// Set an out-of-range index
 		err = p.SetCurrentIndex(100)
 		if err == nil {
 			t.Error("Expected SetCurrentIndex(100) to fail, but it succeeded")
@@ -180,25 +170,25 @@ func TestSetCurrentIndex(t *testing.T) {
 func TestTogglePause(t *testing.T) {
 	p, mockFactory := createTestMusicPlayer(t)
 
-	// Playerインスタンスが必要なので、現在のPlayerをnilに設定し、新しいモックプレイヤーを作成します
+	// Player instance is needed, so set the current Player to nil and create a new mock player
 	mockPlayer := mockFactory.GetLastPlayer()
 
-	// MusicPlayerの内部状態を直接設定（テスト用）
+	// Set MusicPlayer's internal state directly for testing
 	p.TestSetPlayer(mockPlayer)
 	p.TestSetPaused(false)
 
-	// 最初は一時停止していない状態
+	// Initially not paused
 	if p.IsPaused() {
 		t.Error("Test setup failed: player should not be paused initially")
 	}
 
-	// 一時停止
+	// Pause
 	p.TogglePause()
 	if !p.IsPaused() {
 		t.Error("Expected player to be paused after TogglePause")
 	}
 
-	// 再開
+	// Resume
 	p.TogglePause()
 	if p.IsPaused() {
 		t.Error("Expected player to not be paused after second TogglePause")
@@ -208,19 +198,19 @@ func TestTogglePause(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	p, mockFactory := createTestMusicPlayer(t)
 
-	// MusicPlayerの内部状態を直接設定
+	// Set MusicPlayer's internal state directly
 	mockPlayer := mockFactory.GetLastPlayer()
 	p.TestSetPlayer(mockPlayer)
 	p.TestSetCounter(0)
 	p.TestSetPaused(false)
-	p.TestSetState(StatePlaying)
+	p.TestSetState(player.StatePlaying)
 
-	// 初期カウンターを確認
+	// Verify initial counter
 	if p.GetCounter() != 0 {
 		t.Errorf("Test setup failed: expected initial counter to be 0, got %d", p.GetCounter())
 	}
 
-	// Player存在・非一時停止状態でのUpdate - カウンターが増加する
+	// Update - counter increases in Player existence and non-paused state
 	err := p.Update()
 	if err != nil {
 		t.Errorf("Expected Update() to succeed, got error: %v", err)
@@ -230,9 +220,9 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Expected counter to be 1 after update, got %d", p.GetCounter())
 	}
 
-	// 一時停止中はカウンターが更新されない
+	// Counter does not update during pause
 	p.TestSetPaused(true)
-	initialCounter := p.GetCounter() // 現在のカウンター値を保存
+	initialCounter := p.GetCounter() // Save current counter value
 
 	err = p.Update()
 	if err != nil {
@@ -244,9 +234,9 @@ func TestUpdate(t *testing.T) {
 			initialCounter, p.GetCounter())
 	}
 
-	// Playerがnilの場合もカウンターは更新されない
-	p.TestSetPaused(false) // 一時停止解除
-	p.TestSetPlayer(nil)   // Playerをnilに設定
+	// Counter does not update if Player is nil
+	p.TestSetPaused(false) // Unpause
+	p.TestSetPlayer(nil)   // Set Player to nil
 	initialCounter = p.GetCounter()
 
 	err = p.Update()

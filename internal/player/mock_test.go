@@ -83,8 +83,8 @@ func NewMockAudioContext(sampleRate int) *MockAudioContext {
 }
 
 func (m *MockAudioContext) NewPlayer(stream io.Reader) (*audio.Player, error) {
-	// このモックでは実際のaudio.Playerではなく、常にnilを返します
-	// これはテスト環境では実際のオーディオデバイスにアクセスできないためです
+	// This mock always returns nil instead of an actual audio.Player
+	// because we cannot access actual audio devices in the test environment
 	return nil, nil
 }
 
@@ -100,18 +100,18 @@ func NewMockPlayerFactory() *MockPlayerFactory {
 }
 
 func (f *MockPlayerFactory) NewPlayer(stream io.Reader) (player.Player, error) {
-	// テスト用のモックプレイヤーを作成
+	// Create a mock player for testing
 	mockPlayer := NewMockAudioPlayer()
 	f.audioPlayers = append(f.audioPlayers, mockPlayer)
 
-	// player.Playerインターフェースとして返す
+	// Return as player.Player interface
 	return mockPlayer, nil
 }
 
 // GetLastPlayer returns the last created mock player
 func (f *MockPlayerFactory) GetLastPlayer() *MockAudioPlayer {
 	if len(f.audioPlayers) == 0 {
-		// テストのために常にモックプレイヤーを返す
+		// Always return a mock player for testing
 		return NewMockAudioPlayer()
 	}
 	return f.audioPlayers[len(f.audioPlayers)-1]
@@ -157,7 +157,7 @@ func (m *MockReadSeeker) Length() int64 {
 	return m.lengthValue
 }
 
-// 文字列配列を格納するテスト用のMusicDirectoryの実装
+// TestMusicDirectory implements MusicDirectory interface for testing with string arrays
 type TestMusicDirectory string
 
 // NewMockMusicDirectory creates a mock music directory for testing
@@ -177,7 +177,7 @@ func (md TestMusicDirectory) Abs() (string, error) {
 
 // FindMusicFiles searches for music files in the music directory
 func (md TestMusicDirectory) FindMusicFiles() ([]string, error) {
-	// ディレクトリが存在するかチェック
+	// Check if directory exists
 	if _, err := os.Stat(md.Path()); os.IsNotExist(err) {
 		if err := os.MkdirAll(md.Path(), 0755); err != nil {
 			return nil, err
@@ -185,7 +185,7 @@ func (md TestMusicDirectory) FindMusicFiles() ([]string, error) {
 		return []string{}, nil
 	}
 
-	// TestHelper内のSetupTestFilesを使用して実際のファイルを作成
+	// Use SetupTestFiles in TestHelper to create actual files
 	h := TestHelper{}
 	files, cleanup, err := h.SetupTestFiles(md.Path())
 	if err != nil {
