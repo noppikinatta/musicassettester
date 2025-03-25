@@ -12,25 +12,25 @@ import (
 	"musicplayer/internal/ui"
 )
 
-// 音声プレイヤーのサンプルレート
+// Sample rate for audio player
 const sampleRate = 48000
 
-// AudioPlayerWrapper は ebiten の audio.Player を player.Player インターフェースに適合させるラッパーです
+// AudioPlayerWrapper wraps ebiten's audio.Player to implement the player.Player interface
 type AudioPlayerWrapper struct {
 	*audio.Player
 }
 
-// SetVolume は音量を設定します（インターフェースの実装）
+// SetVolume sets the volume (implementation of the interface)
 func (w *AudioPlayerWrapper) SetVolume(volume float64) {
 	w.Player.SetVolume(volume)
 }
 
-// AudioContextWrapper は audio.Context を player.PlayerFactory インターフェースに適合させるラッパーです
+// AudioContextWrapper wraps audio.Context to implement the player.PlayerFactory interface
 type AudioContextWrapper struct {
 	*audio.Context
 }
 
-// NewPlayer は audio.Context.NewPlayer をラップして player.Player を返します
+// NewPlayer wraps audio.Context.NewPlayer to return a player.Player
 func (w *AudioContextWrapper) NewPlayer(stream io.Reader) (player.Player, error) {
 	p, err := w.Context.NewPlayer(stream)
 	if err != nil {
@@ -47,7 +47,7 @@ type Game struct {
 
 // NewGame creates a new game
 func NewGame() (*Game, error) {
-	// 音楽ディレクトリの設定
+	// Set up music directory
 	musicDir := files.DefaultMusicDir
 
 	// Ensure the music directory exists
@@ -66,7 +66,7 @@ func NewGame() (*Game, error) {
 	// Initialize audio context as PlayerFactory
 	audioContext := audio.NewContext(sampleRate)
 
-	// ラッパーを作成
+	// Create wrapper
 	playerFactory := &AudioContextWrapper{Context: audioContext}
 
 	// Initialize the music player
@@ -96,6 +96,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize game: %v", err)
 	}
+
+	// Ensure cleanup on exit
+	defer func() {
+		if game.player != nil {
+			if err := game.player.Close(); err != nil {
+				log.Printf("Error closing player: %v", err)
+			}
+		}
+	}()
 
 	// Create the root widget
 	root := ui.NewRoot(game.player, game.warningText)

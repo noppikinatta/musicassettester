@@ -34,7 +34,7 @@ const (
 	StateInterval
 )
 
-// Player インターフェースは音声プレーヤーの操作を抽象化します
+// Player interface abstracts audio player operations
 type Player interface {
 	Play()
 	Pause()
@@ -42,7 +42,7 @@ type Player interface {
 	SetVolume(volume float64)
 }
 
-// PlayerFactory インターフェースは音声プレイヤーの生成を抽象化します
+// PlayerFactory interface abstracts audio player creation
 type PlayerFactory interface {
 	NewPlayer(stream io.Reader) (Player, error)
 }
@@ -63,6 +63,9 @@ type MusicPlayer struct {
 	loopDuration     float64 // in minutes
 	intervalDuration float64 // in seconds
 	volume           float64 // Current volume (0.0-1.0)
+
+	// File watcher
+	watcher *files.DirectoryWatcher
 }
 
 // NewMusicPlayer creates a new music player
@@ -95,7 +98,50 @@ func NewMusicPlayer(musicDir files.MusicDirectory, playerFactory PlayerFactory) 
 		}
 	}
 
+	// Set up directory watcher
+	watcher, err := musicDir.Watch(player.handleFileChanges)
+	if err != nil {
+		log.Printf("Warning: failed to set up directory watcher: %v", err)
+	} else {
+		player.watcher = watcher
+	}
+
 	return player, nil
+}
+
+// handleFileChanges is called when music files are added or removed
+func (p *MusicPlayer) handleFileChanges(newFiles []string) {
+	// Update music files list
+	p.musicFiles = newFiles
+
+	// If no current track is playing and we have files, start playing
+	if p.currentIndex == -1 && len(newFiles) > 0 {
+		p.currentIndex = 0
+		if err := p.loadCurrentMusic(); err != nil {
+			log.Printf("Failed to load music after file changes: %v", err)
+		}
+	}
+}
+
+// Close cleans up resources
+func (p *MusicPlayer) Close() error {
+	// Close the watcher if it exists
+	if p.watcher != nil {
+		if err := p.watcher.Close(); err != nil {
+			log.Printf("Warning: failed to close watcher: %v", err)
+		}
+		p.watcher = nil
+	}
+
+	// Close the player if it exists
+	if p.player != nil {
+		if err := p.player.Close(); err != nil {
+			return fmt.Errorf("failed to close player: %v", err)
+		}
+		p.player = nil
+	}
+
+	return nil
 }
 
 // GetMusicFiles returns the list of music files
@@ -317,9 +363,9 @@ func (p *MusicPlayer) SkipToNext() error {
 	return p.loadCurrentMusic()
 }
 
-// 以下はテスト用のヘルパーメソッド
+// The following are helper methods for testing
 
-// SetTestMusicFiles は音楽ファイルリストをテスト用に直接設定します
+// SetTestMusicFiles directly sets the music file list for testing
 func (p *MusicPlayer) SetTestMusicFiles(files []string) {
 	p.musicFiles = files
 	if len(files) > 0 && p.currentIndex < 0 {
@@ -328,22 +374,22 @@ func (p *MusicPlayer) SetTestMusicFiles(files []string) {
 	}
 }
 
-// TestSetPaused はポーズ状態をテスト用に直接設定します
+// TestSetPaused directly sets the pause state for testing
 func (p *MusicPlayer) TestSetPaused(paused bool) {
 	p.isPaused = paused
 }
 
-// TestSetState はプレイヤーの状態をテスト用に直接設定します
+// TestSetState directly sets the player state for testing
 func (p *MusicPlayer) TestSetState(state PlayerState) {
 	p.state = state
 }
 
-// TestSetPlayer はプレイヤーのインスタンスをテスト用に直接設定します
+// TestSetPlayer directly sets the player instance for testing
 func (p *MusicPlayer) TestSetPlayer(player Player) {
 	p.player = player
 }
 
-// TestSetCounter はカウンターをテスト用に直接設定します
+// TestSetCounter directly sets the counter for testing
 func (p *MusicPlayer) TestSetCounter(counter int) {
 	p.counter = counter
 }

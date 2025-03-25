@@ -5,6 +5,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
+
+	"github.com/fsnotify/fsnotify"
 )
 
 // MusicDirectory represents a directory where music files are stored
@@ -12,6 +16,146 @@ type MusicDirectory string
 
 // DefaultMusicDir is the default music directory path
 const DefaultMusicDir MusicDirectory = "musics"
+
+// FileChangeCallback is a function type for file change notifications
+type FileChangeCallback func([]string)
+
+// DirectoryWatcher watches for changes in the music directory
+type DirectoryWatcher struct {
+	watcher     *fsnotify.Watcher
+	callback    FileChangeCallback
+	debounceMap map[string]time.Time
+	mu          sync.Mutex
+	done        chan struct{}
+}
+
+// NewDirectoryWatcher creates a new directory watcher
+func NewDirectoryWatcher(callback FileChangeCallback) (*DirectoryWatcher, error) {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create watcher: %v", err)
+	}
+
+	dw := &DirectoryWatcher{
+		watcher:     watcher,
+		callback:    callback,
+		debounceMap: make(map[string]time.Time),
+		done:        make(chan struct{}),
+	}
+
+	go dw.watchLoop()
+	return dw, nil
+}
+
+// watchLoop handles file system events
+func (dw *DirectoryWatcher) watchLoop() {
+	const debounceInterval = 500 * time.Millisecond
+
+	for {
+		select {
+		case event, ok := <-dw.watcher.Events:
+			if !ok {
+				return
+			}
+
+			// Skip temporary files and directories
+			if strings.HasPrefix(filepath.Base(event.Name), ".") {
+				continue
+			}
+
+			// Handle the event
+			if event.Op&(fsnotify.Create|fsnotify.Remove) != 0 {
+				dw.mu.Lock()
+				lastEvent, exists := dw.debounceMap[event.Name]
+				now := time.Now()
+				dw.debounceMap[event.Name] = now
+				dw.mu.Unlock()
+
+				// Debounce events
+				if exists && now.Sub(lastEvent) < debounceInterval {
+					continue
+				}
+
+				// If a directory is created, watch it
+				if event.Op&fsnotify.Create != 0 {
+					if info, err := os.Stat(event.Name); err == nil && info.IsDir() {
+						dw.watchDirectory(event.Name)
+					}
+				}
+
+				// Notify about the change
+				go dw.notifyChange()
+			}
+
+		case err, ok := <-dw.watcher.Errors:
+			if !ok {
+				return
+			}
+			fmt.Printf("Error watching directory: %v\n", err)
+
+		case <-dw.done:
+			return
+		}
+	}
+}
+
+// watchDirectory adds a directory and its subdirectories to the watch list
+func (dw *DirectoryWatcher) watchDirectory(dir string) error {
+	return filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir() {
+			return dw.watcher.Add(path)
+		}
+		return nil
+	})
+}
+
+// notifyChange notifies the callback with updated file list
+func (dw *DirectoryWatcher) notifyChange() {
+	// Get the updated file list
+	files, err := DefaultMusicDir.FindMusicFiles()
+	if err != nil {
+		fmt.Printf("Error finding music files: %v\n", err)
+		return
+	}
+
+	// Notify the callback
+	if dw.callback != nil {
+		dw.callback(files)
+	}
+}
+
+// Close stops watching and cleans up resources
+func (dw *DirectoryWatcher) Close() error {
+	close(dw.done)
+	return dw.watcher.Close()
+}
+
+// Watch starts watching the music directory for changes
+func (md MusicDirectory) Watch(callback FileChangeCallback) (*DirectoryWatcher, error) {
+	// Create watcher
+	dw, err := NewDirectoryWatcher(callback)
+	if err != nil {
+		return nil, err
+	}
+
+	// Ensure directory exists
+	dir, err := md.EnsureMusicDirectory()
+	if err != nil {
+		dw.Close()
+		return nil, err
+	}
+
+	// Start watching the directory
+	if err := dw.watchDirectory(dir); err != nil {
+		dw.Close()
+		return nil, fmt.Errorf("failed to watch directory: %v", err)
+	}
+
+	return dw, nil
+}
 
 // IsWavFile checks if the file is a WAV file
 func IsWavFile(path string) bool {

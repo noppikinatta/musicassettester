@@ -9,148 +9,158 @@ import (
 	"github.com/hajimehoshi/guigui"
 )
 
-// Slider is a custom widget for value selection
+// Slider is a widget for selecting a value within a range.
 type Slider struct {
 	guigui.DefaultWidget
 
-	value    float64
-	min      float64
-	max      float64
-	width    int
-	height   int
-	onChange func(float64)
-
-	dragging       bool
-	dragStartX     int
-	dragStartValue float64
+	value      float64
+	minimum    float64
+	maximum    float64
+	width      int
+	height     int
+	onChange   func(float64)
+	isDragging bool
 }
 
-// NewSlider creates a new slider
+// NewSlider creates a new slider with default values.
 func NewSlider() *Slider {
 	return &Slider{
-		value:  0,
-		min:    0,
-		max:    1,
-		width:  100,
-		height: 20,
+		value:   0,
+		minimum: 0,
+		maximum: 100,
+		width:   200,
+		height:  20,
 	}
 }
 
-// SetValue sets the slider value
+// SetValue sets the current value of the slider.
 func (s *Slider) SetValue(value float64) {
-	if value < s.min {
-		value = s.min
+	// Clamp value between minimum and maximum
+	if value < s.minimum {
+		value = s.minimum
 	}
-	if value > s.max {
-		value = s.max
+	if value > s.maximum {
+		value = s.maximum
 	}
-	s.value = value
+
+	if s.value != value {
+		s.value = value
+		if s.onChange != nil {
+			s.onChange(value)
+		}
+	}
 }
 
-// Value returns the slider value
+// SetMinimum sets the minimum value of the slider.
+func (s *Slider) SetMinimum(min float64) {
+	s.minimum = min
+	if s.value < min {
+		s.SetValue(min)
+	}
+}
+
+// SetMaximum sets the maximum value of the slider.
+func (s *Slider) SetMaximum(max float64) {
+	s.maximum = max
+	if s.value > max {
+		s.SetValue(max)
+	}
+}
+
+// SetOnChange sets the callback function that is called when the value changes.
+func (s *Slider) SetOnChange(callback func(float64)) {
+	s.onChange = callback
+}
+
+// Value returns the current value of the slider.
 func (s *Slider) Value() float64 {
 	return s.value
 }
 
-// SetMinimum sets the minimum value
-func (s *Slider) SetMinimum(min float64) {
-	s.min = min
-	if s.value < min {
-		s.value = min
-	}
-}
-
-// SetMaximum sets the maximum value
-func (s *Slider) SetMaximum(max float64) {
-	s.max = max
-	if s.value > max {
-		s.value = max
-	}
-}
-
-// SetOnChange sets the change callback
-func (s *Slider) SetOnChange(f func(float64)) {
-	s.onChange = f
-}
-
-// SetSize sets the size of the slider
+// SetSize sets the size of the slider.
 func (s *Slider) SetSize(width, height int) {
 	s.width = width
 	s.height = height
 }
 
-// Size returns the size of the slider
+// Size returns the size of the slider.
 func (s *Slider) Size(context *guigui.Context) (int, int) {
 	return s.width, s.height
 }
 
-// HandleInput handles input events
-func (s *Slider) HandleInput(context *guigui.Context) guigui.HandleInputResult {
-	x, y := guigui.Position(s).X, guigui.Position(s).Y
-	w, h := s.Size(context)
+// Draw draws the slider.
+func (s *Slider) Draw(context *guigui.Context, dst *ebiten.Image) {
+	pos := guigui.Position(s)
 
-	mx, my := ebiten.CursorPosition()
+	// Draw background
+	bgColor := color.RGBA{200, 200, 200, 255}
+	vector.DrawFilledRect(dst, float32(pos.X), float32(pos.Y), float32(s.width), float32(s.height), bgColor, false)
 
-	// Check if mouse is over the slider
-	if mx >= x && mx < x+w && my >= y && my < y+h {
-		// Start dragging on mouse press
-		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
-			s.dragging = true
-			s.dragStartX = mx
-			s.dragStartValue = s.value
-			return guigui.HandleInputByWidget(s)
-		}
-	}
+	// Calculate handle position
+	valueRange := s.maximum - s.minimum
+	valueRatio := (s.value - s.minimum) / valueRange
+	handleX := float32(pos.X) + float32(s.width)*float32(valueRatio)
+	handleY := float32(pos.Y)
+	handleWidth := float32(10)
+	handleHeight := float32(s.height)
 
-	// Handle dragging
-	if s.dragging {
-		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
-			relativeX := float64(mx-x) / float64(w)
-			newValue := s.min + relativeX*(s.max-s.min)
-
-			// Clamp value
-			if newValue < s.min {
-				newValue = s.min
-			}
-			if newValue > s.max {
-				newValue = s.max
-			}
-
-			// Only call onChange if value actually changed
-			if newValue != s.value {
-				s.value = newValue
-				if s.onChange != nil {
-					s.onChange(s.value)
-				}
-			}
-
-			return guigui.HandleInputByWidget(s)
-		} else {
-			// Stop dragging when button is released
-			s.dragging = false
-		}
-	}
-
-	return guigui.HandleInputResult{}
+	// Draw handle
+	handleColor := color.RGBA{100, 100, 100, 255}
+	vector.DrawFilledRect(dst, handleX-handleWidth/2, handleY, handleWidth, handleHeight, handleColor, false)
 }
 
-// Draw draws the slider
-func (s *Slider) Draw(context *guigui.Context, dst *ebiten.Image) {
-	x, y := guigui.Position(s).X, guigui.Position(s).Y
-	w, h := s.Size(context)
+// Layout lays out the slider.
+func (s *Slider) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppender) {
+	// Slider has no children
+}
 
-	// Draw track
-	trackY := y + h/2 - 2
-	trackHeight := 4
-	vector.DrawFilledRect(dst, float32(x), float32(trackY), float32(w), float32(trackHeight), color.RGBA{100, 100, 100, 255}, false)
+// Update updates the slider.
+func (s *Slider) Update(context *guigui.Context) error {
+	pos := guigui.Position(s)
+	x, y := ebiten.CursorPosition()
 
-	// Calculate thumb position
-	valueRatio := (s.value - s.min) / (s.max - s.min)
-	thumbX := float32(x + int(float64(w)*valueRatio))
-	thumbSize := float32(12)
-	thumbY := float32(y + h/2 - int(thumbSize)/2)
+	// Check if mouse is over slider
+	if x >= pos.X && x < pos.X+s.width &&
+		y >= pos.Y && y < pos.Y+s.height {
 
-	// Draw thumb
-	vector.DrawFilledCircle(dst, thumbX, thumbY+thumbSize/2, thumbSize/2, color.RGBA{200, 200, 200, 255}, false)
-	vector.StrokeCircle(dst, thumbX, thumbY+thumbSize/2, thumbSize/2, 1, color.RGBA{150, 150, 150, 255}, false)
+		// Start dragging on mouse press
+		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+			s.isDragging = true
+		}
+	}
+
+	// Update value while dragging
+	if s.isDragging {
+		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
+			// Calculate new value based on mouse position
+			valueRange := s.maximum - s.minimum
+			valueRatio := float64(x-pos.X) / float64(s.width)
+			if valueRatio < 0 {
+				valueRatio = 0
+			}
+			if valueRatio > 1 {
+				valueRatio = 1
+			}
+			newValue := s.minimum + valueRange*valueRatio
+			s.SetValue(newValue)
+		} else {
+			s.isDragging = false
+		}
+	}
+
+	return nil
+}
+
+// CursorShape returns the cursor shape for the slider.
+func (s *Slider) CursorShape(context *guigui.Context) (ebiten.CursorShapeType, bool) {
+	pos := guigui.Position(s)
+	x, y := ebiten.CursorPosition()
+
+	// Change cursor to pointer when over slider
+	if x >= pos.X && x < pos.X+s.width &&
+		y >= pos.Y && y < pos.Y+s.height {
+		return ebiten.CursorShapePointer, true
+	}
+
+	return ebiten.CursorShapeDefault, true
 }
