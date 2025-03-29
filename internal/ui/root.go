@@ -14,6 +14,7 @@ import (
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
 	"github.com/hajimehoshi/guigui"
+	"github.com/hajimehoshi/guigui/basicwidget"
 )
 
 const (
@@ -29,9 +30,9 @@ type Root struct {
 	warningText string
 
 	// UI components
-	musicList      *widgets.List
-	nowPlayingText *widgets.Text
-	timeText       *widgets.Text
+	musicList      *basicwidget.List
+	nowPlayingText *basicwidget.Text
+	timeText       *basicwidget.Text
 	loopSlider     *widgets.Slider
 	intervalSlider *widgets.Slider
 
@@ -40,20 +41,20 @@ type Root struct {
 	lastUpdate    time.Time
 
 	// GUI components
-	progressBar    *widgets.ProgressBar
+	progressBar *widgets.ProgressBar
 
 	// Settings components
-	settingsText       *widgets.Text
+	settingsText       *basicwidget.Text
 	loopDurationSlider *widgets.Slider
 }
 
 // NewRoot creates a new root widget
 func NewRoot(player *player.MusicPlayer, warningText string) *Root {
 	r := &Root{
-		player:       player,
-		warningText:  warningText,
+		player:        player,
+		warningText:   warningText,
 		selectedIndex: -1,
-		lastUpdate:   time.Now(),
+		lastUpdate:    time.Now(),
 	}
 	return r
 }
@@ -62,7 +63,7 @@ func NewRoot(player *player.MusicPlayer, warningText string) *Root {
 func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppender) {
 	// Create music list if it doesn't exist
 	if r.musicList == nil {
-		r.musicList = widgets.NewList()
+		r.musicList = &basicwidget.List{}
 		r.musicList.SetOnItemSelected(func(index int) {
 			if r.player != nil {
 				musicFiles := r.player.GetMusicFiles()
@@ -83,19 +84,22 @@ func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppen
 
 	// Create now playing text if it doesn't exist
 	if r.nowPlayingText == nil {
-		r.nowPlayingText = widgets.NewText("")
+		r.nowPlayingText = &basicwidget.Text{}
+		r.nowPlayingText.SetText("")
 		r.nowPlayingText.SetBold(true)
 		r.nowPlayingText.SetScale(1.5)
 	}
 
 	// Create time text if it doesn't exist
 	if r.timeText == nil {
-		r.timeText = widgets.NewText("")
+		r.timeText = &basicwidget.Text{}
+		r.timeText.SetText("")
 	}
 
 	// Create settings text if it doesn't exist
 	if r.settingsText == nil {
-		r.settingsText = widgets.NewText("Settings")
+		r.settingsText = &basicwidget.Text{}
+		r.settingsText.SetText("Settings")
 		r.settingsText.SetBold(true)
 	}
 
@@ -120,25 +124,25 @@ func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppen
 	}
 
 	// Layout music list
-	r.musicList.SetSize(image.Point{X: 200, Y: 300})
+	r.musicList.SetSize(200, 300)
 	pos := guigui.Position(r)
 	guigui.SetPosition(r.musicList, image.Point{X: pos.X + 10, Y: pos.Y + 10})
 	appender.AppendChildWidget(r.musicList)
 
 	// Layout now playing text
-	r.nowPlayingText.SetSize(image.Point{X: 400, Y: 30})
+	r.nowPlayingText.SetSize(400, 30)
 	pos = guigui.Position(r)
 	guigui.SetPosition(r.nowPlayingText, image.Point{X: pos.X + 220, Y: pos.Y + 10})
 	appender.AppendChildWidget(r.nowPlayingText)
 
 	// Layout time text
-	r.timeText.SetSize(image.Point{X: 200, Y: 20})
+	r.timeText.SetSize(200, 20)
 	pos = guigui.Position(r)
 	guigui.SetPosition(r.timeText, image.Point{X: pos.X + 220, Y: pos.Y + 50})
 	appender.AppendChildWidget(r.timeText)
 
 	// Layout settings text
-	r.settingsText.SetSize(image.Point{X: 200, Y: 30})
+	r.settingsText.SetSize(200, 30)
 	pos = guigui.Position(r)
 	guigui.SetPosition(r.settingsText, image.Point{X: pos.X + 220, Y: pos.Y + 100})
 	appender.AppendChildWidget(r.settingsText)

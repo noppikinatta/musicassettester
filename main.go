@@ -15,16 +15,6 @@ import (
 // Sample rate for audio player
 const sampleRate = 48000
 
-// AudioPlayerWrapper wraps ebiten's audio.Player to implement the player.Player interface
-type AudioPlayerWrapper struct {
-	*audio.Player
-}
-
-// SetVolume sets the volume (implementation of the interface)
-func (w *AudioPlayerWrapper) SetVolume(volume float64) {
-	w.Player.SetVolume(volume)
-}
-
 // AudioContextWrapper wraps audio.Context to implement the player.PlayerFactory interface
 type AudioContextWrapper struct {
 	*audio.Context
@@ -36,7 +26,7 @@ func (w *AudioContextWrapper) NewPlayer(stream io.Reader) (player.Player, error)
 	if err != nil {
 		return nil, err
 	}
-	return &AudioPlayerWrapper{Player: p}, nil
+	return p, nil
 }
 
 // Game represents the Ebiten game
