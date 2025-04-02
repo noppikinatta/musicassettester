@@ -17,20 +17,20 @@ type MusicDirectory string
 // DefaultMusicDir is the default music directory path
 const DefaultMusicDir MusicDirectory = "musics"
 
-// FileChangeCallback is a function type for file change notifications
-type FileChangeCallback func([]string)
+// FileChangeHandler is a function type for file change notifications
+type FileChangeHandler func([]string)
 
 // DirectoryWatcher watches for changes in the music directory
 type DirectoryWatcher struct {
 	watcher     *fsnotify.Watcher
-	callback    FileChangeCallback
+	handlers    []FileChangeHandler
 	debounceMap map[string]time.Time
 	mu          sync.Mutex
 	done        chan struct{}
 }
 
 // NewDirectoryWatcher creates a new directory watcher
-func NewDirectoryWatcher(callback FileChangeCallback) (*DirectoryWatcher, error) {
+func NewDirectoryWatcher() (*DirectoryWatcher, error) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create watcher: %v", err)
@@ -38,13 +38,20 @@ func NewDirectoryWatcher(callback FileChangeCallback) (*DirectoryWatcher, error)
 
 	dw := &DirectoryWatcher{
 		watcher:     watcher,
-		callback:    callback,
+		handlers:    make([]FileChangeHandler, 0),
 		debounceMap: make(map[string]time.Time),
 		done:        make(chan struct{}),
 	}
 
 	go dw.watchLoop()
 	return dw, nil
+}
+
+// AddHandler adds a new file change handler
+func (dw *DirectoryWatcher) AddHandler(handler FileChangeHandler) {
+	dw.mu.Lock()
+	defer dw.mu.Unlock()
+	dw.handlers = append(dw.handlers, handler)
 }
 
 // watchLoop handles file system events
@@ -121,9 +128,16 @@ func (dw *DirectoryWatcher) notifyChange() {
 		return
 	}
 
-	// Notify the callback
-	if dw.callback != nil {
-		dw.callback(files)
+	// Notify the handlers
+	dw.mu.Lock()
+	handlers := make([]FileChangeHandler, len(dw.handlers))
+	copy(handlers, dw.handlers)
+	dw.mu.Unlock()
+
+	for _, handler := range handlers {
+		if handler != nil {
+			go handler(files)
+		}
 	}
 }
 
@@ -134,9 +148,9 @@ func (dw *DirectoryWatcher) Close() error {
 }
 
 // Watch starts watching the music directory for changes
-func (md MusicDirectory) Watch(callback FileChangeCallback) (*DirectoryWatcher, error) {
+func (md MusicDirectory) Watch() (*DirectoryWatcher, error) {
 	// Create watcher
-	dw, err := NewDirectoryWatcher(callback)
+	dw, err := NewDirectoryWatcher()
 	if err != nil {
 		return nil, err
 	}

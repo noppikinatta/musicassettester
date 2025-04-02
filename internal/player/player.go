@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/hajimehoshi/ebiten/v2/audio"
@@ -14,6 +15,168 @@ import (
 
 	"musicplayer/internal/files"
 )
+
+// --- MusicSelector ---
+
+// MusicSelector manages the list of music files and the current selection.
+type MusicSelector struct {
+	musicFiles   []string
+	currentIndex int
+	mu           sync.RWMutex
+}
+
+// NewMusicSelector creates a new MusicSelector.
+func NewMusicSelector() *MusicSelector {
+	return &MusicSelector{
+		musicFiles:   make([]string, 0),
+		currentIndex: -1, // No initial selection
+	}
+}
+
+// Update updates the list of music files, trying to preserve the current selection.
+func (s *MusicSelector) Update(newFiles []string) (indexChanged bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	currentPath := ""
+	if s.currentIndex >= 0 && s.currentIndex < len(s.musicFiles) {
+		currentPath = s.musicFiles[s.currentIndex]
+	}
+
+	oldIndex := s.currentIndex
+	s.musicFiles = newFiles
+	newIndex := -1
+
+	// Find the index of the preserved track in the new list
+	if currentPath != "" {
+		for i, file := range s.musicFiles {
+			if file == currentPath {
+				newIndex = i
+				break
+			}
+		}
+	}
+
+	// If the current track wasn't found or the list is empty
+	if newIndex == -1 {
+		if len(s.musicFiles) > 0 {
+			newIndex = 0 // Default to the first track
+		} else {
+			newIndex = -1 // No tracks available
+		}
+	}
+
+	s.currentIndex = newIndex
+	return oldIndex != s.currentIndex
+}
+
+// CurrentFile returns the path of the currently selected file and true if a valid selection exists.
+func (s *MusicSelector) CurrentFile() (string, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.currentIndex >= 0 && s.currentIndex < len(s.musicFiles) {
+		return s.musicFiles[s.currentIndex], true
+	}
+	return "", false
+}
+
+// Files returns a copy of the current music file list.
+func (s *MusicSelector) Files() []string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	// Return a copy to prevent external modification
+	filesCopy := make([]string, len(s.musicFiles))
+	copy(filesCopy, s.musicFiles)
+	return filesCopy
+}
+
+// SelectNext selects the next file in the list, looping back to the start if necessary.
+// Returns true if the index changed.
+func (s *MusicSelector) SelectNext() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.musicFiles) == 0 {
+		s.currentIndex = -1
+		return false // No change if list is empty
+	}
+
+	oldIndex := s.currentIndex
+	s.currentIndex++
+	if s.currentIndex >= len(s.musicFiles) {
+		s.currentIndex = 0
+	}
+	return oldIndex != s.currentIndex
+}
+
+// SelectIndex attempts to select the file at the given index.
+// Returns an error if the index is out of bounds.
+func (s *MusicSelector) SelectIndex(index int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if index < 0 || index >= len(s.musicFiles) {
+		return fmt.Errorf("selector index out of range: %d (count: %d)", index, len(s.musicFiles))
+	}
+	s.currentIndex = index
+	return nil
+}
+
+// CurrentIndex returns the current selection index.
+func (s *MusicSelector) CurrentIndex() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.currentIndex
+}
+
+// --- MusicLoader ---
+
+// MusicLoader handles loading audio streams from file paths.
+type MusicLoader struct {
+	// No fields needed for now, could add configuration later (e.g., sample rate)
+}
+
+// NewMusicLoader creates a new MusicLoader.
+func NewMusicLoader() *MusicLoader {
+	return &MusicLoader{}
+}
+
+// LoadStream opens and decodes an audio file from the given path.
+// It returns a readable and seekable stream, or an error.
+func (l *MusicLoader) LoadStream(filePath string) (io.ReadSeeker, error) {
+	// Open the file
+	f, err := os.Open(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("loader: failed to open audio file %s: %v", filePath, err)
+	}
+
+	// Decode based on file extension
+	var audioStream io.ReadSeeker
+	var decodeErr error
+
+	if files.IsWavFile(filePath) {
+		audioStream, decodeErr = wav.DecodeWithSampleRate(sampleRate, f)
+	} else if files.IsOggFile(filePath) {
+		audioStream, decodeErr = vorbis.DecodeWithSampleRate(sampleRate, f)
+	} else if files.IsMp3File(filePath) {
+		audioStream, decodeErr = mp3.DecodeWithSampleRate(sampleRate, f)
+	} else {
+		f.Close() // Close the file if format is unsupported
+		return nil, fmt.Errorf("loader: unsupported audio format: %s", filePath)
+	}
+
+	if decodeErr != nil {
+		f.Close() // Close the file if decoding fails
+		return nil, fmt.Errorf("loader: failed to decode audio %s: %v", filePath, decodeErr)
+	}
+
+	// Note: The file 'f' is kept open by the stream decoder (wav, vorbis, mp3).
+	// The stream (and thus the file) should be closed by the consumer (e.g., Player.Close).
+	return audioStream, nil
+}
+
+// --- Constants & PlayerState ---
 
 // Constants for the player
 const (
@@ -47,14 +210,59 @@ type PlayerFactory interface {
 	NewPlayer(stream io.Reader) (Player, error)
 }
 
-// MusicPlayer handles music playback
+// --- Music ---
+
+// Music wraps a Player instance and holds metadata or state related to a specific track.
+type Music struct {
+	player Player // The underlying audio player
+	// Future fields: isImpressive bool, notes string, etc.
+}
+
+// NewMusic creates a new Music instance wrapping a Player.
+func NewMusic(player Player) *Music {
+	if player == nil {
+		return nil // Avoid creating Music with a nil player
+	}
+	return &Music{player: player}
+}
+
+// Close closes the underlying player.
+func (m *Music) Close() error {
+	if m.player == nil {
+		return nil
+	}
+	return m.player.Close()
+}
+
+// Delegate methods to the underlying player
+
+func (m *Music) Play() {
+	if m.player != nil {
+		m.player.Play()
+	}
+}
+
+func (m *Music) Pause() {
+	if m.player != nil {
+		m.player.Pause()
+	}
+}
+
+func (m *Music) SetVolume(volume float64) {
+	if m.player != nil {
+		m.player.SetVolume(volume)
+	}
+}
+
+// --- MusicPlayer ---
+
+// MusicPlayer handles music playback orchestration
 type MusicPlayer struct {
 	playerFactory PlayerFactory
-	player        Player
-	audioStream   io.ReadSeeker
-	musicFiles    []string
-	currentIndex  int
-	currentPath   string
+	loader        *MusicLoader
+	currentMusic  *Music        // Changed from player Player to currentMusic *Music
+	audioStream   io.ReadSeeker // Keep track for potential explicit close if needed
+	selector      *MusicSelector
 
 	// Control variables
 	state            PlayerState
@@ -63,95 +271,82 @@ type MusicPlayer struct {
 	loopDuration     float64 // in minutes
 	intervalDuration float64 // in seconds
 	volume           float64 // Current volume (0.0-1.0)
-
-	// File watcher
-	watcher *files.DirectoryWatcher
 }
 
 // NewMusicPlayer creates a new music player
-func NewMusicPlayer(musicDir files.MusicDirectory, playerFactory PlayerFactory) (*MusicPlayer, error) {
-	// Create player
+func NewMusicPlayer(initialMusicFiles []string, playerFactory PlayerFactory) (*MusicPlayer, error) {
+	// Create player components
+	selector := NewMusicSelector()
+	loader := NewMusicLoader() // Create loader
+
 	player := &MusicPlayer{
-		playerFactory:    playerFactory,
-		musicFiles:       []string{},
-		currentIndex:     -1,
+		playerFactory: playerFactory,
+		loader:        loader, // Assign loader
+		selector:      selector,
+		// currentMusic is initially nil
 		state:            StateStopped,
-		loopDuration:     5.0,  // Default 5 minutes
-		intervalDuration: 10.0, // Default 10 seconds
-		volume:           1.0,  // Full volume by default
+		loopDuration:     5.0,
+		intervalDuration: 10.0,
+		volume:           1.0,
 	}
 
-	// Load music files
-	musicFiles, err := musicDir.FindMusicFiles()
-	if err != nil {
-		log.Printf("Warning: failed to find music files: %v", err)
-	}
-
-	// Set the music files
-	player.musicFiles = musicFiles
-
-	// Start with the first track if available
-	if len(musicFiles) > 0 {
-		player.currentIndex = 0
-		if err := player.loadCurrentMusic(); err != nil {
-			return player, fmt.Errorf("failed to load first track: %v", err)
+	// Update selector with the initial list and potentially load the first track
+	if selector.Update(initialMusicFiles) {
+		if _, ok := selector.CurrentFile(); ok {
+			if err := player.loadCurrentMusic(); err != nil {
+				log.Printf("Warning: Failed to load initial track: %v", err)
+				// Do not return error, player might recover if files are added/changed later
+			}
 		}
 	}
 
-	// Set up directory watcher
-	watcher, err := musicDir.Watch(player.handleFileChanges)
-	if err != nil {
-		log.Printf("Warning: failed to set up directory watcher: %v", err)
-	} else {
-		player.watcher = watcher
-	}
-
-	return player, nil
+	return player, nil // Return player even if initial load failed
 }
 
-// handleFileChanges is called when music files are added or removed
-func (p *MusicPlayer) handleFileChanges(newFiles []string) {
-	// Update music files list
-	p.musicFiles = newFiles
+// UpdateMusicFiles updates the music list and loads if necessary.
+func (p *MusicPlayer) UpdateMusicFiles(newFiles []string) {
+	indexChanged := p.selector.Update(newFiles)
 
-	// If no current track is playing and we have files, start playing
-	if p.currentIndex == -1 && len(newFiles) > 0 {
-		p.currentIndex = 0
-		if err := p.loadCurrentMusic(); err != nil {
-			log.Printf("Failed to load music after file changes: %v", err)
+	if indexChanged {
+		if _, ok := p.selector.CurrentFile(); ok {
+			if err := p.loadCurrentMusic(); err != nil {
+				log.Printf("Failed to load music after file changes: %v", err)
+			}
+		} else {
+			if p.currentMusic != nil {
+				p.currentMusic.Close() // Close the wrapped player
+				p.currentMusic = nil
+			}
+			p.state = StateStopped
+			p.isPaused = false
 		}
 	}
 }
 
 // Close cleans up resources
 func (p *MusicPlayer) Close() error {
-	// Close the watcher if it exists
-	if p.watcher != nil {
-		if err := p.watcher.Close(); err != nil {
-			log.Printf("Warning: failed to close watcher: %v", err)
+	if p.currentMusic != nil {
+		if err := p.currentMusic.Close(); err != nil { // Close the wrapped player
+			return fmt.Errorf("failed to close music: %v", err)
 		}
-		p.watcher = nil
+		p.currentMusic = nil
 	}
-
-	// Close the player if it exists
-	if p.player != nil {
-		if err := p.player.Close(); err != nil {
-			return fmt.Errorf("failed to close player: %v", err)
-		}
-		p.player = nil
-	}
-
+	// audioStream might be managed by the player, but explicit close is safer if needed
+	// if closer, ok := p.audioStream.(io.Closer); ok {
+	// 	 closer.Close()
+	// }
 	return nil
 }
 
-// GetMusicFiles returns the list of music files
+// GetMusicFiles returns the list of music files from the selector.
 func (p *MusicPlayer) GetMusicFiles() []string {
-	return p.musicFiles
+	return p.selector.Files()
 }
 
-// GetCurrentPath returns the path of the currently playing music
+// GetCurrentPath returns the path of the currently playing music from the selector.
 func (p *MusicPlayer) GetCurrentPath() string {
-	return p.currentPath
+	path, _ := p.selector.CurrentFile()
+	return path
 }
 
 // GetState returns the current state of the player
@@ -189,76 +384,69 @@ func (p *MusicPlayer) SetIntervalSeconds(seconds float64) {
 	p.intervalDuration = seconds
 }
 
-// SetCurrentIndex sets the current index of the music
+// SetCurrentIndex selects the music at the given index using the selector.
 func (p *MusicPlayer) SetCurrentIndex(index int) error {
-	if index < 0 || index >= len(p.musicFiles) {
-		return fmt.Errorf("index out of range: %d", index)
+	if err := p.selector.SelectIndex(index); err != nil {
+		return err
 	}
-	p.currentIndex = index
-	return nil
+	// If selection is successful, load the music
+	return p.loadCurrentMusic()
 }
 
-// loadCurrentMusic loads the current music
+// loadCurrentMusic loads the music indicated by the selector's current index.
 func (p *MusicPlayer) loadCurrentMusic() error {
-	// Check if there are music files
-	if len(p.musicFiles) == 0 {
-		return fmt.Errorf("no music files available")
-	}
-
-	// Check if the current index is valid
-	if p.currentIndex < 0 || p.currentIndex >= len(p.musicFiles) {
-		return fmt.Errorf("current index out of range: %d", p.currentIndex)
-	}
-
-	// If a player is already active, close it
-	if p.player != nil {
-		// Close old player
-		if err := p.player.Close(); err != nil {
-			log.Printf("Warning: failed to close player: %v", err)
+	currentPath, ok := p.selector.CurrentFile()
+	if !ok {
+		if p.currentMusic != nil {
+			if err := p.currentMusic.Close(); err != nil {
+				log.Printf("Error closing music while stopping: %v", err)
+			}
+			p.currentMusic = nil
 		}
-		p.player = nil
+		p.state = StateStopped
+		return fmt.Errorf("no music file selected")
 	}
 
-	// Get the current music file
-	currentPath := p.musicFiles[p.currentIndex]
-	p.currentPath = currentPath
+	// Close existing music/player if active
+	if p.currentMusic != nil {
+		if err := p.currentMusic.Close(); err != nil {
+			log.Printf("Warning: failed to close previous music: %v", err)
+		}
+		p.currentMusic = nil
+	}
 
-	// Open the file
-	f, err := os.Open(currentPath)
+	// Load the audio stream using the loader
+	audioStream, err := p.loader.LoadStream(currentPath)
 	if err != nil {
-		return fmt.Errorf("failed to open audio file %s: %v", currentPath, err)
+		return fmt.Errorf("failed to load audio stream for %s: %v", currentPath, err)
 	}
+	p.audioStream = audioStream // Keep track of the raw stream
 
-	// Decode based on file extension
-	var audioStream io.ReadSeeker
-
-	if files.IsWavFile(currentPath) {
-		audioStream, err = wav.DecodeWithSampleRate(sampleRate, f)
-	} else if files.IsOggFile(currentPath) {
-		audioStream, err = vorbis.DecodeWithSampleRate(sampleRate, f)
-	} else if files.IsMp3File(currentPath) {
-		audioStream, err = mp3.DecodeWithSampleRate(sampleRate, f)
-	} else {
-		f.Close()
-		return fmt.Errorf("unsupported audio format: %s", currentPath)
+	// Create infinite loop stream
+	streamLength, ok := audioStream.(interface{ Length() int64 })
+	if !ok {
+		if closer, okCloser := audioStream.(io.Closer); okCloser {
+			closer.Close()
+		}
+		return fmt.Errorf("loaded audio stream for %s does not support Length()", currentPath)
 	}
+	loopStream := audio.NewInfiniteLoop(audioStream, streamLength.Length())
 
+	// Create the actual player instance
+	newPlayer, err := p.playerFactory.NewPlayer(loopStream)
 	if err != nil {
-		f.Close()
-		return fmt.Errorf("failed to decode audio: %v", err)
+		if closer, okCloser := audioStream.(io.Closer); okCloser {
+			closer.Close()
+		}
+		return fmt.Errorf("failed to create audio player for %s: %v", currentPath, err)
 	}
 
-	// Create an infinite loop stream
-	p.audioStream = audioStream
-	loopStream := audio.NewInfiniteLoop(audioStream, audioStream.(interface{ Length() int64 }).Length())
-
-	// Create player using the factory
-	player, err := p.playerFactory.NewPlayer(loopStream)
-	if err != nil {
-		return fmt.Errorf("failed to create audio player: %v", err)
+	// Wrap the player in a Music struct
+	p.currentMusic = NewMusic(newPlayer)
+	if p.currentMusic == nil { // Should not happen if NewPlayer succeeded
+		return fmt.Errorf("failed to wrap player in Music struct for %s", currentPath)
 	}
-	p.player = player
-	p.player.SetVolume(p.volume)
+	p.currentMusic.SetVolume(p.volume)
 
 	// Reset counter and state
 	p.counter = 0
@@ -266,74 +454,62 @@ func (p *MusicPlayer) loadCurrentMusic() error {
 	p.isPaused = false
 
 	// Start playing
-	p.player.Play()
+	p.currentMusic.Play()
 
 	return nil
 }
 
 // TogglePause toggles pause state
 func (p *MusicPlayer) TogglePause() {
-	if p.player == nil {
+	if p.currentMusic == nil { // Check currentMusic instead of player
 		return
 	}
 
 	if p.isPaused {
-		p.player.Play()
+		p.currentMusic.Play() // Delegate to Music
 		p.isPaused = false
 	} else {
-		p.player.Pause()
+		p.currentMusic.Pause() // Delegate to Music
 		p.isPaused = true
 	}
 }
 
 // Update updates the player state
 func (p *MusicPlayer) Update() error {
-	// Skip if no player or paused
-	if p.player == nil || p.isPaused {
+	if p.currentMusic == nil || p.isPaused { // Check currentMusic
 		return nil
 	}
 
-	// Increment counter (60 times per second in Ebiten)
 	p.counter++
 
-	// Handle different states
 	switch p.state {
 	case StatePlaying:
-		// Check if we reached the time limit (convert minutes to frames)
-		loopDurationFrames := int(p.loopDuration * 60 * 60) // minutes * 60 seconds * 60 frames
+		loopDurationFrames := int(p.loopDuration * 60 * 60)
 		if p.counter >= loopDurationFrames {
-			// Start fade out
 			p.state = StateFadingOut
 			p.counter = 0
 		}
 
 	case StateFadingOut:
-		// Calculate fade-out duration in frames
-		fadeOutFrames := int(fadeOutDuration.Seconds() * 60) // 2 seconds * 60 frames
+		fadeOutFrames := int(fadeOutDuration.Seconds() * 60)
 		if p.counter >= fadeOutFrames {
-			// Time to switch to interval
 			p.state = StateInterval
 			p.counter = 0
-
-			// Stop the player
-			if p.player != nil {
-				p.player.Pause()
+			if p.currentMusic != nil {
+				p.currentMusic.Pause() // Pause the wrapped player
 			}
 		} else {
-			// Calculate fade-out volume
 			fadeRatio := 1.0 - float64(p.counter)/float64(fadeOutFrames)
 			p.volume = fadeRatio
-			if p.player != nil {
-				p.player.SetVolume(fadeRatio)
+			if p.currentMusic != nil {
+				p.currentMusic.SetVolume(fadeRatio) // Set volume on Music
 			}
 		}
 
 	case StateInterval:
-		// Calculate interval duration in frames
-		intervalFrames := int(p.intervalDuration * 60) // seconds * 60 frames
+		intervalFrames := int(p.intervalDuration * 60)
 		if p.counter >= intervalFrames {
-			// Time for next song
-			p.volume = 1.0 // Reset volume to full
+			p.volume = 1.0
 			err := p.SkipToNext()
 			if err != nil {
 				return fmt.Errorf("failed to skip to next track: %v", err)
@@ -346,50 +522,21 @@ func (p *MusicPlayer) Update() error {
 
 // SkipToNext skips to the next track
 func (p *MusicPlayer) SkipToNext() error {
-	// Determine next index
-	nextIndex := p.currentIndex + 1
-	if nextIndex >= len(p.musicFiles) {
-		// Loop back to the first track
-		nextIndex = 0
+	nextIndex := p.selector.SelectNext()
+	if !nextIndex {
+		return nil
 	}
 
-	// Set current index
-	p.currentIndex = nextIndex
-
-	// Reset volume to full
 	p.volume = 1.0
-
-	// Load and play the selected music
 	return p.loadCurrentMusic()
 }
 
-// The following are helper methods for testing
-
-// SetTestMusicFiles directly sets the music file list for testing
-func (p *MusicPlayer) SetTestMusicFiles(files []string) {
-	p.musicFiles = files
-	if len(files) > 0 && p.currentIndex < 0 {
-		p.currentIndex = 0
-		p.currentPath = files[0]
-	}
-}
-
-// TestSetPaused directly sets the pause state for testing
-func (p *MusicPlayer) TestSetPaused(paused bool) {
-	p.isPaused = paused
-}
-
-// TestSetState directly sets the player state for testing
-func (p *MusicPlayer) TestSetState(state PlayerState) {
-	p.state = state
-}
-
-// TestSetPlayer directly sets the player instance for testing
+// TestSetPlayer is deprecated, use TestSetCurrentMusic
 func (p *MusicPlayer) TestSetPlayer(player Player) {
-	p.player = player
+	p.currentMusic = NewMusic(player)
 }
 
-// TestSetCounter directly sets the counter for testing
-func (p *MusicPlayer) TestSetCounter(counter int) {
-	p.counter = counter
+// TestSetCurrentMusic directly sets the Music instance for testing
+func (p *MusicPlayer) TestSetCurrentMusic(music *Music) {
+	p.currentMusic = music
 }

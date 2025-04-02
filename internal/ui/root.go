@@ -5,11 +5,12 @@ import (
 	"image"
 	"log"
 	"strings"
-	"time"
 
-	"musicplayer/internal/files"
+	// Keep time for potential future use in Update
+	// Keep time for potential future use in Update
+	"musicplayer/internal/files" // Needed for HandleFileChanges
 	"musicplayer/internal/player"
-	"musicplayer/internal/ui/widgets"
+	"musicplayer/internal/ui/widgets" // Keep widgets for Slider
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
@@ -24,140 +25,121 @@ const (
 
 // Root is the root widget of the application
 type Root struct {
-	guigui.RootWidget
+	guigui.DefaultWidget
 
-	player      *player.MusicPlayer
-	warningText string
+	player *player.MusicPlayer
+	// warningText string // Removed, use warningLabel instead
 
-	// UI components
-	musicList      *basicwidget.List
-	nowPlayingText *basicwidget.Text
-	timeText       *basicwidget.Text
-	loopSlider     *widgets.Slider
-	intervalSlider *widgets.Slider
-
-	// State
-	selectedIndex int
-	lastUpdate    time.Time
-
-	// GUI components
-	progressBar *widgets.ProgressBar
-
-	// Settings components
-	settingsText       *basicwidget.Text
-	loopDurationSlider *widgets.Slider
+	// UI components (Value types for basicwidget again)
+	musicList          basicwidget.List
+	nowPlayingText     basicwidget.Text
+	timeText           basicwidget.Text
+	settingsText       basicwidget.Text
+	loopDurationSlider widgets.Slider
+	intervalSlider     widgets.Slider
+	warningLabel       basicwidget.Text
+	warningText        string // 警告テキストの保持用
 }
 
 // NewRoot creates a new root widget
-func NewRoot(player *player.MusicPlayer, warningText string) *Root {
+func NewRoot(player *player.MusicPlayer, initialWarningText string) *Root {
+	// Initialize struct with zero values for value types
 	r := &Root{
-		player:        player,
-		warningText:   warningText,
-		selectedIndex: -1,
-		lastUpdate:    time.Now(),
+		player:      player,
+		warningText: initialWarningText,
 	}
+
+	// Configure List (Access value type directly)
+	r.musicList.SetOnItemSelected(func(index int) {
+		if r.player != nil {
+			musicFiles := r.player.GetMusicFiles()
+			if index >= 0 && index < len(musicFiles) {
+				if err := r.player.SetCurrentIndex(index); err != nil {
+					log.Printf("Failed to set current index: %v", err)
+				}
+			}
+		}
+	})
+
+	// Configure Sliders (Pointers are accessed directly)
+	r.loopDurationSlider.SetMinimum(1)
+	r.loopDurationSlider.SetMaximum(60)
+	r.intervalSlider.SetMinimum(1)
+	r.intervalSlider.SetMaximum(60)
+	if r.player != nil {
+		r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
+		r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
+	}
+
+	// Initial population of the list
+	if r.player != nil {
+		r.updateMusicList(r.player.GetMusicFiles())
+	}
+
 	return r
 }
 
 // Layout lays out the root widget
 func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppender) {
-	// Create music list if it doesn't exist
-	if r.musicList == nil {
-		r.musicList = &basicwidget.List{}
-		r.musicList.SetOnItemSelected(func(index int) {
-			if r.player != nil {
-				musicFiles := r.player.GetMusicFiles()
-				if index >= 0 && index < len(musicFiles) {
-					if err := r.player.SetCurrentIndex(index); err != nil {
-						log.Printf("Failed to set current index: %v", err)
-						return
-					}
+	// Configure Text widgets
+	r.nowPlayingText.SetBold(true)
+	r.nowPlayingText.SetScale(1.5)
+	r.settingsText.SetText("Settings")
+	r.settingsText.SetBold(true)
+	r.warningLabel.SetText(r.warningText) // 保持している値を設定
+	r.warningLabel.SetScale(1.2)
 
-					// Reset player state and skip to selected track
-					if err := r.player.SkipToNext(); err != nil {
-						log.Printf("Failed to load music: %v", err)
-					}
-				}
-			}
-		})
-	}
-
-	// Create now playing text if it doesn't exist
-	if r.nowPlayingText == nil {
-		r.nowPlayingText = &basicwidget.Text{}
-		r.nowPlayingText.SetText("")
-		r.nowPlayingText.SetBold(true)
-		r.nowPlayingText.SetScale(1.5)
-	}
-
-	// Create time text if it doesn't exist
-	if r.timeText == nil {
-		r.timeText = &basicwidget.Text{}
-		r.timeText.SetText("")
-	}
-
-	// Create settings text if it doesn't exist
-	if r.settingsText == nil {
-		r.settingsText = &basicwidget.Text{}
-		r.settingsText.SetText("Settings")
-		r.settingsText.SetBold(true)
-	}
-
-	// Create loop duration slider if it doesn't exist
-	if r.loopDurationSlider == nil {
-		r.loopDurationSlider = widgets.NewSlider()
-		r.loopDurationSlider.SetMinimum(1)
-		r.loopDurationSlider.SetMaximum(60)
-		if r.player != nil {
-			r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
-		}
-	}
-
-	// Create interval slider if it doesn't exist
-	if r.intervalSlider == nil {
-		r.intervalSlider = widgets.NewSlider()
-		r.intervalSlider.SetMinimum(1)
-		r.intervalSlider.SetMaximum(60)
-		if r.player != nil {
-			r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
-		}
-	}
-
-	// Layout music list
-	r.musicList.SetSize(200, 300)
+	// --- Position and Append Widgets ---
 	pos := guigui.Position(r)
-	guigui.SetPosition(r.musicList, image.Point{X: pos.X + 10, Y: pos.Y + 10})
-	appender.AppendChildWidget(r.musicList)
+	w, h := r.Size(context) // Get root size
 
-	// Layout now playing text
-	r.nowPlayingText.SetSize(400, 30)
-	pos = guigui.Position(r)
-	guigui.SetPosition(r.nowPlayingText, image.Point{X: pos.X + 220, Y: pos.Y + 10})
-	appender.AppendChildWidget(r.nowPlayingText)
+	// Conditionally add EITHER warning label OR the main layout
+	if r.warningLabel.Text() != "" {
+		// Warning Label takes up main space
+		r.warningLabel.SetSize(w-40, h-40)
+		// Pass ADDRESS of value types
+		guigui.SetPosition(&r.warningLabel, image.Point{X: pos.X + 20, Y: pos.Y + 20})
+		appender.AppendChildWidget(&r.warningLabel)
+	} else {
+		// Main Layout (List, Now Playing, Time, Settings, Sliders)
+		listWidth := 200
+		contentX := pos.X + listWidth + 20
+		contentWidth := w - listWidth - 30
 
-	// Layout time text
-	r.timeText.SetSize(200, 20)
-	pos = guigui.Position(r)
-	guigui.SetPosition(r.timeText, image.Point{X: pos.X + 220, Y: pos.Y + 50})
-	appender.AppendChildWidget(r.timeText)
+		// Music List
+		r.musicList.SetSize(listWidth, h-20)
+		// Pass ADDRESS of value types
+		guigui.SetPosition(&r.musicList, image.Point{X: pos.X + 10, Y: pos.Y + 10})
+		appender.AppendChildWidget(&r.musicList)
 
-	// Layout settings text
-	r.settingsText.SetSize(200, 30)
-	pos = guigui.Position(r)
-	guigui.SetPosition(r.settingsText, image.Point{X: pos.X + 220, Y: pos.Y + 100})
-	appender.AppendChildWidget(r.settingsText)
+		// Now Playing Text
+		r.nowPlayingText.SetSize(contentWidth, 30)
+		// Pass ADDRESS of value types
+		guigui.SetPosition(&r.nowPlayingText, image.Point{X: contentX, Y: pos.Y + 10})
+		appender.AppendChildWidget(&r.nowPlayingText)
 
-	// Layout loop duration slider
-	r.loopDurationSlider.SetSize(200, 20)
-	pos = guigui.Position(r)
-	guigui.SetPosition(r.loopDurationSlider, image.Point{X: pos.X + 220, Y: pos.Y + 140})
-	appender.AppendChildWidget(r.loopDurationSlider)
+		// Time Text
+		r.timeText.SetSize(contentWidth, 20)
+		// Pass ADDRESS of value types
+		guigui.SetPosition(&r.timeText, image.Point{X: contentX, Y: pos.Y + 50})
+		appender.AppendChildWidget(&r.timeText)
 
-	// Layout interval slider
-	r.intervalSlider.SetSize(200, 20)
-	pos = guigui.Position(r)
-	guigui.SetPosition(r.intervalSlider, image.Point{X: pos.X + 220, Y: pos.Y + 180})
-	appender.AppendChildWidget(r.intervalSlider)
+		// Settings Text
+		r.settingsText.SetSize(contentWidth, 30)
+		// Pass ADDRESS of value types
+		guigui.SetPosition(&r.settingsText, image.Point{X: contentX, Y: pos.Y + 100})
+		appender.AppendChildWidget(&r.settingsText)
+
+		// Loop Duration Slider (Pass pointer directly)
+		r.loopDurationSlider.SetSize(contentWidth, 20)
+		guigui.SetPosition(&r.loopDurationSlider, image.Point{X: contentX, Y: pos.Y + 140})
+		appender.AppendChildWidget(&r.loopDurationSlider)
+
+		// Interval Slider (Pass pointer directly)
+		r.intervalSlider.SetSize(contentWidth, 20)
+		guigui.SetPosition(&r.intervalSlider, image.Point{X: contentX, Y: pos.Y + 180})
+		appender.AppendChildWidget(&r.intervalSlider)
+	}
 }
 
 // Size returns the size of the root widget
@@ -167,33 +149,102 @@ func (r *Root) Size(context *guigui.Context) (int, int) {
 
 // Update updates the root widget
 func (r *Root) Update(context *guigui.Context) error {
-	// Update player state
+	// Access value types directly for reads/method calls
 	if r.player != nil {
 		if err := r.player.Update(); err != nil {
 			return err
 		}
 
-		// Check if we need to update the warning text
-		musicFiles := r.player.GetMusicFiles()
-		if len(musicFiles) == 0 && r.warningText == "" {
-			r.warningText = files.DefaultMusicDir.GetUsageInstructions()
-		} else if len(musicFiles) > 0 && r.warningText != "" {
-			r.warningText = ""
+		if r.warningLabel.Text() == "" {
+			currentPath := r.player.GetCurrentPath()
+			if currentPath != "" {
+				relPath := currentPath
+				if strings.HasPrefix(relPath, "musics/") || strings.HasPrefix(relPath, "musics\\") {
+					relPath = relPath[len("musics/"):]
+				}
+				statusText := "Now Playing: " + relPath
+				if r.player.IsPaused() {
+					statusText = "PAUSED: " + relPath
+				}
+				r.nowPlayingText.SetText(statusText) // Call method on value
+			} else {
+				r.nowPlayingText.SetText("No track playing")
+			}
+
+			switch r.player.GetState() {
+			case player.StatePlaying:
+				currentTimeSec := r.player.GetCounter() / 60
+				totalTimeSec := int(r.player.GetLoopDurationMinutes() * 60)
+				r.timeText.SetText(fmt.Sprintf("%d:%02d / %d:%02d",
+					currentTimeSec/60, currentTimeSec%60,
+					totalTimeSec/60, totalTimeSec%60))
+			case player.StateFadingOut:
+				r.timeText.SetText("Fading out...")
+			case player.StateInterval:
+				intervalSec := (int(r.player.GetIntervalSeconds())*60 - r.player.GetCounter()) / 60
+				r.timeText.SetText(fmt.Sprintf("Next track in: %d seconds", intervalSec))
+			default:
+				r.timeText.SetText("")
+			}
+
+			r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
+			r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
 		}
 
-		// Update list items if music files have changed
-		if r.musicList != nil {
-			currentItems := r.musicList.Items()
-			if len(currentItems) != len(musicFiles) {
-				r.updateMusicList(musicFiles)
-			}
+	} else {
+		if r.warningLabel.Text() == "" {
+			r.warningLabel.SetText("Player Initialization Error")
 		}
 	}
 
+	return nil
+}
+
+// updateMusicList updates the music list widget
+// Called by HandleFileChanges
+func (r *Root) updateMusicList(musicFiles []string) {
+	// Access value type directly
+	listItems := make([]basicwidget.ListItem, 0, len(musicFiles))
+
+	for _, path := range musicFiles {
+		relPath := path
+		if strings.HasPrefix(path, "musics/") || strings.HasPrefix(path, "musics\\") {
+			relPath = path[len("musics/"):]
+		}
+
+		textWidget := &basicwidget.Text{} // Create pointer for ListItem content
+		textWidget.SetText(relPath)
+
+		item := basicwidget.ListItem{
+			Content: textWidget, // ListItem still needs a Widget (pointer)
+		}
+		listItems = append(listItems, item)
+	}
+
+	// Call method on value type
+	r.musicList.SetItems(listItems)
+}
+
+// Draw draws the root widget
+func (r *Root) Draw(context *guigui.Context, dst *ebiten.Image) {
+	// Draw background using basicwidget helper
+	basicwidget.FillBackground(dst, context)
+
+	// Child widget drawing is handled by guigui automatically after Layout appends them
+}
+
+// CursorShape returns the cursor shape for this widget
+func (r *Root) CursorShape(context *guigui.Context) (ebiten.CursorShapeType, bool) {
+	return ebiten.CursorShapeDefault, true
+}
+
+// HandleInput handles global key presses
+func (r *Root) HandleInput(context *guigui.Context) guigui.HandleInputResult {
 	// Space key to toggle pause
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		if r.player != nil {
 			r.player.TogglePause()
+			return guigui.HandleInputByWidget(r) // Input handled by this widget
 		}
 	}
 
@@ -203,122 +254,26 @@ func (r *Root) Update(context *guigui.Context) error {
 			if err := r.player.SkipToNext(); err != nil {
 				log.Printf("Failed to skip to next track: %v", err)
 			}
+			return guigui.HandleInputByWidget(r) // Input handled by this widget
 		}
 	}
 
-	return nil
+	// If not handled, return zero value to let guigui propagate to children
+	return guigui.HandleInputResult{}
 }
 
-// updateMusicList updates the music list widget with new files
-func (r *Root) updateMusicList(musicFiles []string) {
-	if r.musicList == nil {
-		return
-	}
+// HandleFileChanges is the event handler for directory changes.
+func (r *Root) HandleFileChanges(musicFiles []string) {
+	// Update the music list UI
+	r.updateMusicList(musicFiles)
 
-	listItems := make([]widgets.ListItem, 0, len(musicFiles))
-
-	// Get relative paths from musics directory
-	for _, path := range musicFiles {
-		relPath := path
-		if strings.HasPrefix(path, "musics/") || strings.HasPrefix(path, "musics\\") {
-			relPath = path[len("musics/"):]
-		}
-
-		// Create a text widget for each item
-		text := widgets.NewText(relPath)
-
-		// Create list item
-		item := widgets.ListItem{
-			Content:    text,
-			Selectable: true,
-			Tag:        path, // Store original path as tag
-		}
-
-		listItems = append(listItems, item)
-	}
-
-	r.musicList.SetItems(listItems)
-}
-
-// Draw draws the root widget
-func (r *Root) Draw(context *guigui.Context, dst *ebiten.Image) {
-	// Get the widget position
-	pos := guigui.Position(r)
-
-	// Create options for drawing
-	opts := &ebiten.DrawImageOptions{}
-	opts.GeoM.Translate(float64(pos.X), float64(pos.Y))
-
-	// Draw background
-	rect := ebiten.NewImage(800, 600)
-	_, bgColor, _ := widgets.Colors()
-	rect.Fill(bgColor)
-	dst.DrawImage(rect, opts)
-
-	// Draw warning text if needed
-	if r.warningText != "" {
-		warningText := widgets.NewText(r.warningText)
-		warningText.SetSize(image.Point{X: 400, Y: 30})
-		warningText.SetBold(true)
-		warningTextPos := image.Point{X: pos.X + 200, Y: pos.Y + 200}
-		guigui.SetPosition(warningText, warningTextPos)
-		warningText.Draw(context, dst)
-		return
-	}
-
-	// Update now playing text
-	if r.player != nil {
-		currentPath := r.player.GetCurrentPath()
-		if currentPath != "" {
-			relPath := currentPath
-			if strings.HasPrefix(relPath, "musics/") || strings.HasPrefix(relPath, "musics\\") {
-				relPath = relPath[len("musics/"):]
-			}
-
-			// Show pause status if paused
-			statusText := "Now Playing: " + relPath
-			if r.player.IsPaused() {
-				statusText = "PAUSED: " + relPath
-			}
-			r.nowPlayingText.SetText(statusText)
-		} else {
-			r.nowPlayingText.SetText("No track playing")
-		}
+	// Update the warning label based on whether files exist (Access value type directly)
+	if len(musicFiles) == 0 {
+		r.warningLabel.SetText(files.DefaultMusicDir.GetUsageInstructions())
 	} else {
-		r.nowPlayingText.SetText("No track playing")
+		r.warningLabel.SetText("") // Clear warning if files exist
 	}
 
-	// Update time text
-	if r.player != nil {
-		switch r.player.GetState() {
-		case player.StatePlaying:
-			currentTimeSec := r.player.GetCounter() / 60
-			totalTimeSec := int(r.player.GetLoopDurationMinutes() * 60)
-			r.timeText.SetText(fmt.Sprintf("%d:%02d / %d:%02d",
-				currentTimeSec/60, currentTimeSec%60,
-				totalTimeSec/60, totalTimeSec%60))
-		case player.StateFadingOut:
-			r.timeText.SetText("Fading out...")
-		case player.StateInterval:
-			intervalSec := (int(r.player.GetIntervalSeconds())*60 - r.player.GetCounter()) / 60
-			r.timeText.SetText(fmt.Sprintf("Next track in: %d seconds", intervalSec))
-		}
-	} else {
-		r.timeText.SetText("")
-	}
-
-	// Update loop duration text
-	if r.player != nil {
-		r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
-	}
-
-	// Update interval text
-	if r.player != nil {
-		r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
-	}
-}
-
-// CursorShape returns the cursor shape for this widget
-func (r *Root) CursorShape(context *guigui.Context) (ebiten.CursorShapeType, bool) {
-	return ebiten.CursorShapeDefault, true
+	// Request redraw or relayout if needed (might be handled by guigui automatically)
+	// guigui.RequestLayout(r)
 }
