@@ -67,7 +67,7 @@ func NewGame() (*Game, error) {
 		// Log warning but continue as player might recover if files are added
 		log.Printf("Warning: Failed to initialize music player: %v", err)
 		// Ensure musicPlayer is nil if initialization truly failed, though NewMusicPlayer currently doesn't return errors
-		// musicPlayer = nil 
+		// musicPlayer = nil
 	}
 
 	// Create and start the directory watcher
@@ -78,17 +78,10 @@ func NewGame() (*Game, error) {
 		watcher = nil // Ensure watcher is nil if creation failed
 	}
 
-	// Set warning message if no music files were initially found
-	warningText := ""
-	if len(musicFiles) == 0 {
-		warningText = musicDir.GetUsageInstructions()
-	}
-
 	// Create and return the game
 	g := &Game{
-		player:      musicPlayer,
-		warningText: warningText,
-		watcher:     watcher,
+		player:  musicPlayer,
+		watcher: watcher,
 	}
 
 	return g, nil
@@ -116,18 +109,18 @@ func main() {
 		}
 	}()
 
-	// Create the root widget, passing the initial warning text
-	root := ui.NewRoot(game.player, game.warningText)
+	// Create the root widget
+	root := ui.NewRoot(game.player)
 
 	// ---- Connect Watcher to Root's Handler ----
 	if game.watcher != nil {
 		// Add Root's HandleFileChanges as a handler
 		game.watcher.AddHandler(root.HandleFileChanges)
-		
+
 		// Optionally trigger initial notification if needed,
 		// although NewRoot already handles initial state.
 		// game.watcher.NotifyChange() // Depends on DirectoryWatcher implementation
-	} 
+	}
 	// ---- End Connection ----
 
 	// Run the application with guigui
