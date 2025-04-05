@@ -129,6 +129,16 @@ func (r *Root) Update(context *guigui.Context) error {
 		return err
 	}
 
+	r.updateCurrentMusicState()
+
+	r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
+	r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
+
+	return nil
+}
+
+// updateCurrentMusicState updates the UI elements related to the current music state.
+func (r *Root) updateCurrentMusicState() {
 	currentPath := r.player.GetCurrentPath()
 	if currentPath != "" {
 		relPath := currentPath
@@ -159,11 +169,6 @@ func (r *Root) Update(context *guigui.Context) error {
 	default:
 		r.timeText.SetText("")
 	}
-
-	r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
-	r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
-
-	return nil
 }
 
 // initialize performs the one-time setup for the root widget.
