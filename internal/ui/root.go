@@ -179,9 +179,17 @@ func (r *Root) initialize() {
 		}
 	})
 
-	// Set initial slider values
+	// Set initial slider values and configure callbacks
 	r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
+	r.loopDurationSlider.SetOnChange(func(value float64) {
+		r.player.SetLoopDurationMinutes(value)
+	})
+
 	r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
+	r.intervalSlider.SetOnChange(func(value float64) {
+		r.player.SetIntervalSeconds(value)
+	})
+
 	// Initial population of the list
 	r.updateMusicList(r.player.GetMusicFiles())
 }
