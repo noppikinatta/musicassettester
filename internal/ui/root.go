@@ -39,55 +39,38 @@ type Root struct {
 	intervalSlider     widgets.Slider
 	warningLabel       basicwidget.Text
 	warningText        string // 警告テキストの保持用
+	initialized        bool   // 初期化フラグ
 }
 
 // NewRoot creates a new root widget
 func NewRoot(player *player.MusicPlayer, initialWarningText string) *Root {
-	// Initialize struct with zero values for value types
+	// Initialize struct with zero values for value types and initial state
 	r := &Root{
 		player:      player,
 		warningText: initialWarningText,
+		// initialized is false by default
 	}
 
-	// Configure List (Access value type directly)
-	r.musicList.SetOnItemSelected(func(index int) {
-		if r.player != nil {
-			musicFiles := r.player.GetMusicFiles()
-			if index >= 0 && index < len(musicFiles) {
-				if err := r.player.SetCurrentIndex(index); err != nil {
-					log.Printf("Failed to set current index: %v", err)
-				}
-			}
-		}
-	})
-
-	// Configure Sliders (Pointers are accessed directly)
-	r.loopDurationSlider.SetMinimum(1)
-	r.loopDurationSlider.SetMaximum(60)
-	r.intervalSlider.SetMinimum(1)
-	r.intervalSlider.SetMaximum(60)
-	if r.player != nil {
-		r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
-		r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
-	}
-
-	// Initial population of the list
-	if r.player != nil {
-		r.updateMusicList(r.player.GetMusicFiles())
-	}
+	// DO NOT configure widgets here, as it might trigger RequestRedraw before Run
 
 	return r
 }
 
 // Layout lays out the root widget
 func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppender) {
-	// Configure Text widgets
+	// Configure Text widgets (Safe to call Setters here)
 	r.nowPlayingText.SetBold(true)
 	r.nowPlayingText.SetScale(1.5)
 	r.settingsText.SetText("Settings")
 	r.settingsText.SetBold(true)
 	r.warningLabel.SetText(r.warningText) // 保持している値を設定
 	r.warningLabel.SetScale(1.2)
+
+	// Configure Sliders Min/Max (Safe to call Setters here)
+	r.loopDurationSlider.SetMinimum(1)
+	r.loopDurationSlider.SetMaximum(60)
+	r.intervalSlider.SetMinimum(1)
+	r.intervalSlider.SetMaximum(60)
 
 	// --- Position and Append Widgets ---
 	pos := guigui.Position(r)
@@ -149,59 +132,79 @@ func (r *Root) Size(context *guigui.Context) (int, int) {
 
 // Update updates the root widget
 func (r *Root) Update(context *guigui.Context) error {
+	// --- One-time Initialization ---
+	if !r.initialized {
+		r.initialize()
+		r.initialized = true
+	}
+
+	// --- Regular Update Logic ---
 	// Access value types directly for reads/method calls
-	if r.player != nil {
-		if err := r.player.Update(); err != nil {
-			return err
-		}
+	if err := r.player.Update(); err != nil {
+		return err
+	}
 
-		if r.warningLabel.Text() == "" {
-			currentPath := r.player.GetCurrentPath()
-			if currentPath != "" {
-				relPath := currentPath
-				if strings.HasPrefix(relPath, "musics/") || strings.HasPrefix(relPath, "musics\\") {
-					relPath = relPath[len("musics/"):]
-				}
-				statusText := "Now Playing: " + relPath
-				if r.player.IsPaused() {
-					statusText = "PAUSED: " + relPath
-				}
-				r.nowPlayingText.SetText(statusText) // Call method on value
-			} else {
-				r.nowPlayingText.SetText("No track playing")
+	if r.warningLabel.Text() == "" {
+		currentPath := r.player.GetCurrentPath()
+		if currentPath != "" {
+			relPath := currentPath
+			if strings.HasPrefix(relPath, "musics/") || strings.HasPrefix(relPath, "musics\\") {
+				relPath = relPath[len("musics/"):]
 			}
-
-			switch r.player.GetState() {
-			case player.StatePlaying:
-				currentTimeSec := r.player.GetCounter() / 60
-				totalTimeSec := int(r.player.GetLoopDurationMinutes() * 60)
-				r.timeText.SetText(fmt.Sprintf("%d:%02d / %d:%02d",
-					currentTimeSec/60, currentTimeSec%60,
-					totalTimeSec/60, totalTimeSec%60))
-			case player.StateFadingOut:
-				r.timeText.SetText("Fading out...")
-			case player.StateInterval:
-				intervalSec := (int(r.player.GetIntervalSeconds())*60 - r.player.GetCounter()) / 60
-				r.timeText.SetText(fmt.Sprintf("Next track in: %d seconds", intervalSec))
-			default:
-				r.timeText.SetText("")
+			statusText := "Now Playing: " + relPath
+			if r.player.IsPaused() {
+				statusText = "PAUSED: " + relPath
 			}
-
-			r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
-			r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
+			r.nowPlayingText.SetText(statusText) // Call method on value
+		} else {
+			r.nowPlayingText.SetText("No track playing")
 		}
 
-	} else {
-		if r.warningLabel.Text() == "" {
-			r.warningLabel.SetText("Player Initialization Error")
+		switch r.player.GetState() {
+		case player.StatePlaying:
+			currentTimeSec := r.player.GetCounter() / 60
+			totalTimeSec := int(r.player.GetLoopDurationMinutes() * 60)
+			r.timeText.SetText(fmt.Sprintf("%d:%02d / %d:%02d",
+				currentTimeSec/60, currentTimeSec%60,
+				totalTimeSec/60, totalTimeSec%60))
+		case player.StateFadingOut:
+			r.timeText.SetText("Fading out...")
+		case player.StateInterval:
+			intervalSec := (int(r.player.GetIntervalSeconds())*60 - r.player.GetCounter()) / 60
+			r.timeText.SetText(fmt.Sprintf("Next track in: %d seconds", intervalSec))
+		default:
+			r.timeText.SetText("")
 		}
+
+		r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
+		r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
 	}
 
 	return nil
 }
 
+// initialize performs the one-time setup for the root widget.
+// This should be called only once from Update.
+func (r *Root) initialize() {
+	// Configure List OnItemSelected callback
+	r.musicList.SetOnItemSelected(func(index int) {
+		musicFiles := r.player.GetMusicFiles()
+		if index >= 0 && index < len(musicFiles) {
+			if err := r.player.SetCurrentIndex(index); err != nil {
+				log.Printf("Failed to set current index: %v", err)
+			}
+		}
+	})
+
+	// Set initial slider values
+	r.loopDurationSlider.SetValue(float64(r.player.GetLoopDurationMinutes()))
+	r.intervalSlider.SetValue(float64(r.player.GetIntervalSeconds()))
+	// Initial population of the list
+	r.updateMusicList(r.player.GetMusicFiles())
+}
+
 // updateMusicList updates the music list widget
-// Called by HandleFileChanges
+// Called by HandleFileChanges and initialize
 func (r *Root) updateMusicList(musicFiles []string) {
 	// Access value type directly
 	listItems := make([]basicwidget.ListItem, 0, len(musicFiles))
@@ -242,20 +245,16 @@ func (r *Root) CursorShape(context *guigui.Context) (ebiten.CursorShapeType, boo
 func (r *Root) HandleInput(context *guigui.Context) guigui.HandleInputResult {
 	// Space key to toggle pause
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-		if r.player != nil {
-			r.player.TogglePause()
-			return guigui.HandleInputByWidget(r) // Input handled by this widget
-		}
+		r.player.TogglePause()
+		return guigui.HandleInputByWidget(r) // Input handled by this widget
 	}
 
 	// N key to skip to next track
 	if inpututil.IsKeyJustPressed(ebiten.KeyN) {
-		if r.player != nil {
-			if err := r.player.SkipToNext(); err != nil {
-				log.Printf("Failed to skip to next track: %v", err)
-			}
-			return guigui.HandleInputByWidget(r) // Input handled by this widget
+		if err := r.player.SkipToNext(); err != nil {
+			log.Printf("Failed to skip to next track: %v", err)
 		}
+		return guigui.HandleInputByWidget(r) // Input handled by this widget
 	}
 
 	// If not handled, return zero value to let guigui propagate to children
