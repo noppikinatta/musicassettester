@@ -68,51 +68,77 @@ func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppen
 
 	// --- Position and Append Widgets ---
 	pos := guigui.Position(r)
-	w, h := r.Size(context) // Get root size
+	rootWidth, rootHeight := r.Size(context) // Get root size
 
-	// Main Layout (List, Now Playing, Time, Settings, Sliders)
-	listWidth := 200
-	contentX := pos.X + listWidth + 20
-	contentWidth := w - listWidth - 30
+	const margin int = 8
 
+	// ウィジェットの配置計算
+	// 利用可能な幅はRootの幅からmarginを両側分引いたもの
+	availableWidth := rootWidth - margin*2
+
+	// 各ウィジェットの高さを定義
+	const (
+		nowPlayingTextHeight = 30
+		timeTextHeight       = 20
+		settingsTextHeight   = 30
+		sliderHeight         = 20
+	)
+
+	// ウィジェットの縦方向の配置を下から順に計算
+	// intervalSlider
+	intervalSliderY := rootHeight - margin - sliderHeight
+
+	// loopDurationSlider
+	loopDurationSliderY := intervalSliderY - margin - sliderHeight
+
+	// settingsText
+	settingsTextY := loopDurationSliderY - margin - settingsTextHeight
+
+	// timeText
+	timeTextY := settingsTextY - margin - timeTextHeight
+
+	// nowPlayingText
+	nowPlayingTextY := timeTextY - margin - nowPlayingTextHeight
+
+	// musicList （残りの高さを全て使用）
+	musicListHeight := nowPlayingTextY - margin*2
+	musicListY := margin
+
+	// ウィジェットの配置と追加
 	// Music List
-	r.musicList.SetSize(listWidth, h-20)
-	// Pass ADDRESS of value types
-	guigui.SetPosition(&r.musicList, image.Point{X: pos.X + 10, Y: pos.Y + 10})
+	r.musicList.SetSize(availableWidth, musicListHeight)
+	guigui.SetPosition(&r.musicList, image.Point{X: pos.X + margin, Y: pos.Y + musicListY})
 	appender.AppendChildWidget(&r.musicList)
 
 	// Now Playing Text
-	r.nowPlayingText.SetSize(contentWidth, 30)
-	// Pass ADDRESS of value types
-	guigui.SetPosition(&r.nowPlayingText, image.Point{X: contentX, Y: pos.Y + 10})
+	r.nowPlayingText.SetSize(availableWidth, nowPlayingTextHeight)
+	guigui.SetPosition(&r.nowPlayingText, image.Point{X: pos.X + margin, Y: pos.Y + nowPlayingTextY})
 	appender.AppendChildWidget(&r.nowPlayingText)
 
 	// Time Text
-	r.timeText.SetSize(contentWidth, 20)
-	// Pass ADDRESS of value types
-	guigui.SetPosition(&r.timeText, image.Point{X: contentX, Y: pos.Y + 50})
+	r.timeText.SetSize(availableWidth, timeTextHeight)
+	guigui.SetPosition(&r.timeText, image.Point{X: pos.X + margin, Y: pos.Y + timeTextY})
 	appender.AppendChildWidget(&r.timeText)
 
 	// Settings Text
-	r.settingsText.SetSize(contentWidth, 30)
-	// Pass ADDRESS of value types
-	guigui.SetPosition(&r.settingsText, image.Point{X: contentX, Y: pos.Y + 100})
+	r.settingsText.SetSize(availableWidth, settingsTextHeight)
+	guigui.SetPosition(&r.settingsText, image.Point{X: pos.X + margin, Y: pos.Y + settingsTextY})
 	appender.AppendChildWidget(&r.settingsText)
 
-	// Loop Duration Slider (Pass pointer directly)
-	r.loopDurationSlider.SetSize(contentWidth, 20)
-	guigui.SetPosition(&r.loopDurationSlider, image.Point{X: contentX, Y: pos.Y + 140})
+	// Loop Duration Slider
+	r.loopDurationSlider.SetSize(availableWidth, sliderHeight)
+	guigui.SetPosition(&r.loopDurationSlider, image.Point{X: pos.X + margin, Y: pos.Y + loopDurationSliderY})
 	appender.AppendChildWidget(&r.loopDurationSlider)
 
-	// Interval Slider (Pass pointer directly)
-	r.intervalSlider.SetSize(contentWidth, 20)
-	guigui.SetPosition(&r.intervalSlider, image.Point{X: contentX, Y: pos.Y + 180})
+	// Interval Slider
+	r.intervalSlider.SetSize(availableWidth, sliderHeight)
+	guigui.SetPosition(&r.intervalSlider, image.Point{X: pos.X + margin, Y: pos.Y + intervalSliderY})
 	appender.AppendChildWidget(&r.intervalSlider)
 }
 
 // Size returns the size of the root widget
 func (r *Root) Size(context *guigui.Context) (int, int) {
-	return 800, 600
+	return context.AppSize()
 }
 
 // Update updates the root widget
@@ -151,7 +177,7 @@ func (r *Root) updateCurrentMusicState() {
 		}
 		r.nowPlayingText.SetText(statusText) // Call method on value
 	} else {
-		r.nowPlayingText.SetText("No track playing")
+		r.nowPlayingText.SetText("No track playing. Locate music files in musics/ directory.")
 	}
 
 	switch r.player.GetState() {
