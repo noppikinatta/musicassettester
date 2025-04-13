@@ -176,6 +176,10 @@ func (r *Root) updateCurrentMusicState() {
 			statusText = "PAUSED: " + relPath
 		}
 		r.nowPlayingText.SetText(statusText) // Call method on value
+
+		// 選択状態を更新
+		currentIndex := r.player.GetCurrentIndex()
+		r.musicList.SetSelectedItemIndex(currentIndex)
 	} else {
 		r.nowPlayingText.SetText("No track playing. Locate music files in musics/ directory.")
 	}
@@ -248,6 +252,12 @@ func (r *Root) updateMusicList(musicFiles []string) {
 
 	// Call method on value type
 	r.musicList.SetItems(listItems)
+
+	// 現在再生中の曲のインデックスを選択状態にする
+	currentIndex := r.player.GetCurrentIndex()
+	if currentIndex >= 0 && currentIndex < len(musicFiles) {
+		r.musicList.SetSelectedItemIndex(currentIndex)
+	}
 }
 
 // Draw draws the root widget

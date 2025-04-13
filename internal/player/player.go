@@ -384,6 +384,11 @@ func (p *MusicPlayer) SetIntervalSeconds(seconds float64) {
 	p.intervalDuration = seconds
 }
 
+// GetCurrentIndex returns the current selection index from the selector.
+func (p *MusicPlayer) GetCurrentIndex() int {
+	return p.selector.CurrentIndex()
+}
+
 // SetCurrentIndex selects the music at the given index using the selector.
 func (p *MusicPlayer) SetCurrentIndex(index int) error {
 	if err := p.selector.SelectIndex(index); err != nil {
