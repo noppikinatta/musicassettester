@@ -56,18 +56,17 @@ func (p *ProgressBar) Size(context *guigui.Context) (int, int) {
 // Draw draws the progress bar
 func (p *ProgressBar) Draw(context *guigui.Context, dst *ebiten.Image) {
 	// Draw background
-	x, y := guigui.Position(p).X, guigui.Position(p).Y
-	w, h := p.Size(context)
+	bounds := context.Bounds(p)
 
 	// Background (gray)
-	vector.DrawFilledRect(dst, float32(x), float32(y), float32(w), float32(h), color.RGBA{100, 100, 100, 255}, false)
+	vector.DrawFilledRect(dst, float32(bounds.Min.X), float32(bounds.Min.Y), float32(bounds.Dx()), float32(bounds.Dy()), color.RGBA{100, 100, 100, 255}, false)
 
 	// Progress (green)
-	progressWidth := float32(float64(w) * p.value)
+	progressWidth := float32(float64(bounds.Dx()) * p.value)
 	if progressWidth > 0 {
-		vector.DrawFilledRect(dst, float32(x), float32(y), progressWidth, float32(h), color.RGBA{0, 200, 100, 255}, false)
+		vector.DrawFilledRect(dst, float32(bounds.Min.X), float32(bounds.Min.Y), progressWidth, float32(bounds.Dy()), color.RGBA{0, 200, 100, 255}, false)
 	}
 
 	// Border
-	vector.StrokeRect(dst, float32(x), float32(y), float32(w), float32(h), 1, color.RGBA{150, 150, 150, 255}, false)
+	vector.StrokeRect(dst, float32(bounds.Min.X), float32(bounds.Min.Y), float32(bounds.Dx()), float32(bounds.Dy()), 1, color.RGBA{150, 150, 150, 255}, false)
 }

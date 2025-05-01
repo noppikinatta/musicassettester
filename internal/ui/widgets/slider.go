@@ -90,19 +90,19 @@ func (s *Slider) Size(context *guigui.Context) (int, int) {
 
 // Draw draws the slider.
 func (s *Slider) Draw(context *guigui.Context, dst *ebiten.Image) {
-	pos := guigui.Position(s)
+	bounds := context.Bounds(s)
 
 	// Draw background
 	bgColor := color.RGBA{200, 200, 200, 255}
-	vector.DrawFilledRect(dst, float32(pos.X), float32(pos.Y), float32(s.width), float32(s.height), bgColor, false)
+	vector.DrawFilledRect(dst, float32(bounds.Min.X), float32(bounds.Min.Y), float32(bounds.Dx()), float32(bounds.Dy()), bgColor, false)
 
 	// Calculate handle position
 	valueRange := s.maximum - s.minimum
 	valueRatio := (s.value - s.minimum) / valueRange
-	handleX := float32(pos.X) + float32(s.width)*float32(valueRatio)
-	handleY := float32(pos.Y)
+	handleX := float32(bounds.Min.X) + float32(bounds.Dx())*float32(valueRatio)
+	handleY := float32(bounds.Min.Y)
 	handleWidth := float32(10)
-	handleHeight := float32(s.height)
+	handleHeight := float32(bounds.Dy())
 
 	// Draw handle
 	handleColor := color.RGBA{100, 100, 100, 255}
@@ -116,12 +116,12 @@ func (s *Slider) Layout(context *guigui.Context, appender *guigui.ChildWidgetApp
 
 // Update updates the slider.
 func (s *Slider) Update(context *guigui.Context) error {
-	pos := guigui.Position(s)
+	bounds := context.Bounds(s)
 	x, y := ebiten.CursorPosition()
 
 	// Check if mouse is over slider
-	if x >= pos.X && x < pos.X+s.width &&
-		y >= pos.Y && y < pos.Y+s.height {
+	if x >= bounds.Min.X && x < bounds.Max.X &&
+		y >= bounds.Min.Y && y < bounds.Max.Y {
 
 		// Start dragging on mouse press
 		if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
@@ -134,7 +134,7 @@ func (s *Slider) Update(context *guigui.Context) error {
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			// Calculate new value based on mouse position
 			valueRange := s.maximum - s.minimum
-			valueRatio := float64(x-pos.X) / float64(s.width)
+			valueRatio := float64(x-bounds.Min.X) / float64(bounds.Dx())
 			if valueRatio < 0 {
 				valueRatio = 0
 			}
@@ -153,12 +153,12 @@ func (s *Slider) Update(context *guigui.Context) error {
 
 // CursorShape returns the cursor shape for the slider.
 func (s *Slider) CursorShape(context *guigui.Context) (ebiten.CursorShapeType, bool) {
-	pos := guigui.Position(s)
+	bounds := context.Bounds(s)
 	x, y := ebiten.CursorPosition()
 
 	// Change cursor to pointer when over slider
-	if x >= pos.X && x < pos.X+s.width &&
-		y >= pos.Y && y < pos.Y+s.height {
+	if x >= bounds.Min.X && x < bounds.Max.X &&
+		y >= bounds.Min.Y && y < bounds.Max.Y {
 		return ebiten.CursorShapePointer, true
 	}
 

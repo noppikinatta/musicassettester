@@ -1,6 +1,7 @@
 package main
 
 import (
+	"image"
 	"io"
 	"log"
 
@@ -125,9 +126,8 @@ func main() {
 
 	// Run the application with guigui
 	op := &guigui.RunOptions{
-		Title:           "Music Cassette Tester",
-		WindowMinWidth:  ui.ScreenWidth,
-		WindowMinHeight: ui.ScreenHeight,
+		Title:      "Music Cassette Tester",
+		WindowSize: image.Point{X: ui.ScreenWidth, Y: ui.ScreenHeight},
 	}
 
 	if err := guigui.Run(root, op); err != nil {

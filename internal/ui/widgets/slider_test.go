@@ -151,7 +151,7 @@ func TestSlider_SetSize(t *testing.T) {
 	}
 }
 
-func TestSlider_HandleInput(t *testing.T) {
+func TestSlider_HandlePointingInput(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipped: Input tests are not run in short mode")
 	}
@@ -159,7 +159,19 @@ func TestSlider_HandleInput(t *testing.T) {
 	s := widgets.NewSlider()
 
 	// Test input handling
-	result := s.HandleInput(nil)
+	result := s.HandlePointingInput(nil)
+	assert.NotNil(t, result)
+}
+
+func TestSlider_HandleButtonInput(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipped: Input tests are not run in short mode")
+	}
+
+	s := widgets.NewSlider()
+
+	// Test input handling
+	result := s.HandleButtonInput(nil)
 	assert.NotNil(t, result)
 }
 

@@ -14,8 +14,10 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/hajimehoshi/ebiten/v2/text/v2"
 	"github.com/hajimehoshi/guigui"
 	"github.com/hajimehoshi/guigui/basicwidget"
+	"github.com/hajimehoshi/guigui/basicwidget/cjkfont"
 )
 
 const (
@@ -30,7 +32,8 @@ type Root struct {
 	player *player.MusicPlayer
 
 	// UI components (Value types for basicwidget again)
-	musicList          basicwidget.List
+	background basicwidget.Background
+	musicList          basicwidget.TextList[string]
 	nowPlayingText     basicwidget.Text
 	timeText           basicwidget.Text
 	settingsText       basicwidget.Text
@@ -53,7 +56,26 @@ func NewRoot(player *player.MusicPlayer) *Root {
 }
 
 // Layout lays out the root widget
-func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppender) {
+func (r *Root) Build(context *guigui.Context, appender *guigui.ChildWidgetAppender) error{
+	faceSources := []*text.GoTextFaceSource{
+		basicwidget.DefaultFaceSource(),
+	}
+	for _, locale := range context.AppendLocales(nil) {
+		fs := cjkfont.FaceSourceFromLocale(locale)
+		if fs != nil {
+			faceSources = append(faceSources, fs)
+			break
+		}
+	}
+	if len(faceSources) == 1 {
+		// Set a Japanese font as a fallback. You can use any font you like here.
+		faceSources = append(faceSources, cjkfont.FaceSourceJP())
+	}
+	basicwidget.SetFaceSources(faceSources)
+
+	appender.AppendChildWidgetWithBounds(&r.background, context.AppBounds())
+
+
 	// Configure Text widgets (Safe to call Setters here)
 	r.nowPlayingText.SetBold(true)
 	r.nowPlayingText.SetScale(1.5)
@@ -67,14 +89,14 @@ func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppen
 	r.intervalSlider.SetMaximum(60)
 
 	// --- Position and Append Widgets ---
-	pos := guigui.Position(r)
-	rootWidth, rootHeight := r.Size(context) // Get root size
+	bounds := context.Bounds(r)
+	appSize:= context.AppSize() // Get root size
 
 	const margin int = 8
 
 	// ウィジェットの配置計算
 	// 利用可能な幅はRootの幅からmarginを両側分引いたもの
-	availableWidth := rootWidth - margin*2
+	availableWidth := appSize.X - margin*2
 
 	// 各ウィジェットの高さを定義
 	const (
@@ -86,7 +108,7 @@ func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppen
 
 	// ウィジェットの縦方向の配置を下から順に計算
 	// intervalSlider
-	intervalSliderY := rootHeight - margin - sliderHeight
+	intervalSliderY := appSize.Y - margin - sliderHeight
 
 	// loopDurationSlider
 	loopDurationSliderY := intervalSliderY - margin - sliderHeight
@@ -106,39 +128,65 @@ func (r *Root) Layout(context *guigui.Context, appender *guigui.ChildWidgetAppen
 
 	// ウィジェットの配置と追加
 	// Music List
-	r.musicList.SetSize(availableWidth, musicListHeight)
-	guigui.SetPosition(&r.musicList, image.Point{X: pos.X + margin, Y: pos.Y + musicListY})
-	appender.AppendChildWidget(&r.musicList)
+	appender.AppendChildWidgetWithBounds(
+		&r.musicList, 
+		image.Rect(bounds.Min.X+margin, 
+			bounds.Min.Y+musicListY,
+			bounds.Min.X+margin+availableWidth,
+			bounds.Min.Y+musicListY+musicListHeight,
+			),
+	)
 
 	// Now Playing Text
-	r.nowPlayingText.SetSize(availableWidth, nowPlayingTextHeight)
-	guigui.SetPosition(&r.nowPlayingText, image.Point{X: pos.X + margin, Y: pos.Y + nowPlayingTextY})
-	appender.AppendChildWidget(&r.nowPlayingText)
-
+	appender.AppendChildWidgetWithBounds(
+		&r.nowPlayingText,
+		image.Rect(bounds.Min.X+margin,
+			bounds.Min.Y+nowPlayingTextY,
+			bounds.Min.X+margin+availableWidth,
+			bounds.Min.Y+nowPlayingTextY+nowPlayingTextHeight,
+		),
+	)
 	// Time Text
-	r.timeText.SetSize(availableWidth, timeTextHeight)
-	guigui.SetPosition(&r.timeText, image.Point{X: pos.X + margin, Y: pos.Y + timeTextY})
-	appender.AppendChildWidget(&r.timeText)
+	appender.AppendChildWidgetWithBounds(
+		&r.timeText,
+		image.Rect(bounds.Min.X+margin,
+			bounds.Min.Y+timeTextY,
+			bounds.Min.X+margin+availableWidth,
+			bounds.Min.Y+timeTextY+timeTextHeight,
+		),
+	)
 
 	// Settings Text
-	r.settingsText.SetSize(availableWidth, settingsTextHeight)
-	guigui.SetPosition(&r.settingsText, image.Point{X: pos.X + margin, Y: pos.Y + settingsTextY})
-	appender.AppendChildWidget(&r.settingsText)
+	appender.AppendChildWidgetWithBounds(
+		&r.settingsText,
+		image.Rect(bounds.Min.X+margin,
+			bounds.Min.Y+settingsTextY,
+			bounds.Min.X+margin+availableWidth,
+			bounds.Min.Y+settingsTextY+settingsTextHeight,
+		),
+	)
 
 	// Loop Duration Slider
-	r.loopDurationSlider.SetSize(availableWidth, sliderHeight)
-	guigui.SetPosition(&r.loopDurationSlider, image.Point{X: pos.X + margin, Y: pos.Y + loopDurationSliderY})
-	appender.AppendChildWidget(&r.loopDurationSlider)
+	appender.AppendChildWidgetWithBounds(
+		&r.loopDurationSlider,
+		image.Rect(bounds.Min.X+margin,
+			bounds.Min.Y+loopDurationSliderY,
+			bounds.Min.X+margin+availableWidth,
+			bounds.Min.Y+loopDurationSliderY+sliderHeight,
+		),
+	)
 
 	// Interval Slider
-	r.intervalSlider.SetSize(availableWidth, sliderHeight)
-	guigui.SetPosition(&r.intervalSlider, image.Point{X: pos.X + margin, Y: pos.Y + intervalSliderY})
-	appender.AppendChildWidget(&r.intervalSlider)
-}
+	appender.AppendChildWidgetWithBounds(
+		&r.intervalSlider,
+		image.Rect(bounds.Min.X+margin,
+			bounds.Min.Y+intervalSliderY,
+			bounds.Min.X+margin+availableWidth,
+			bounds.Min.Y+intervalSliderY+sliderHeight,
+		),
+	)
 
-// Size returns the size of the root widget
-func (r *Root) Size(context *guigui.Context) (int, int) {
-	return context.AppSize()
+	return nil
 }
 
 // Update updates the root widget
@@ -177,9 +225,9 @@ func (r *Root) updateCurrentMusicState() {
 		}
 		r.nowPlayingText.SetText(statusText) // Call method on value
 
-		// 選択状態を更新
-		currentIndex := r.player.GetCurrentIndex()
-		r.musicList.SetSelectedItemIndex(currentIndex)
+		// 選択状態の更新はここでは行わない (無限ループの原因)
+		// currentIndex := r.player.GetCurrentIndex()
+		// r.musicList.SetSelectedItemIndex(currentIndex)
 	} else {
 		r.nowPlayingText.SetText("No track playing. Locate music files in musics/ directory.")
 	}
@@ -233,7 +281,7 @@ func (r *Root) initialize() {
 // Called by HandleFileChanges and initialize
 func (r *Root) updateMusicList(musicFiles []string) {
 	// Access value type directly
-	listItems := make([]basicwidget.ListItem, 0, len(musicFiles))
+	listItems := make([]basicwidget.TextListItem[string], 0, len(musicFiles))
 
 	for _, path := range musicFiles {
 		relPath := path
@@ -241,11 +289,9 @@ func (r *Root) updateMusicList(musicFiles []string) {
 			relPath = path[len("musics/"):]
 		}
 
-		textWidget := &basicwidget.Text{} // Create pointer for ListItem content
-		textWidget.SetText(relPath)
-
-		item := basicwidget.ListItem{
-			Content: textWidget, // ListItem still needs a Widget (pointer)
+		item := basicwidget.TextListItem[string]{
+			Text: relPath, // ListItem still needs a Widget (pointer)
+			Tag:  path,
 		}
 		listItems = append(listItems, item)
 	}
@@ -256,16 +302,8 @@ func (r *Root) updateMusicList(musicFiles []string) {
 	// 現在再生中の曲のインデックスを選択状態にする
 	currentIndex := r.player.GetCurrentIndex()
 	if currentIndex >= 0 && currentIndex < len(musicFiles) {
-		r.musicList.SetSelectedItemIndex(currentIndex)
+		r.musicList.SelectItemByIndex(currentIndex)
 	}
-}
-
-// Draw draws the root widget
-func (r *Root) Draw(context *guigui.Context, dst *ebiten.Image) {
-	// Draw background using basicwidget helper
-	basicwidget.FillBackground(dst, context)
-
-	// Child widget drawing is handled by guigui automatically after Layout appends them
 }
 
 // CursorShape returns the cursor shape for this widget

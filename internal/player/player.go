@@ -290,15 +290,9 @@ func NewMusicPlayer(initialMusicFiles []string, playerFactory PlayerFactory) (*M
 		volume:           1.0,
 	}
 
-	// Update selector with the initial list and potentially load the first track
-	if selector.Update(initialMusicFiles) {
-		if _, ok := selector.CurrentFile(); ok {
-			if err := player.loadCurrentMusic(); err != nil {
-				log.Printf("Warning: Failed to load initial track: %v", err)
-				// Do not return error, player might recover if files are added/changed later
-			}
-		}
-	}
+	// Update selector with the initial list but DO NOT load the music yet.
+	// Loading should happen in the first Update call when the audio context is ready.
+	selector.Update(initialMusicFiles)
 
 	return player, nil // Return player even if initial load failed
 }
@@ -481,10 +475,6 @@ func (p *MusicPlayer) TogglePause() {
 
 // Update updates the player state
 func (p *MusicPlayer) Update() error {
-	if p.currentMusic == nil || p.isPaused { // Check currentMusic
-		return nil
-	}
-
 	p.counter++
 
 	switch p.state {
@@ -527,8 +517,8 @@ func (p *MusicPlayer) Update() error {
 
 // SkipToNext skips to the next track
 func (p *MusicPlayer) SkipToNext() error {
-	nextIndex := p.selector.SelectNext()
-	if !nextIndex {
+	nextIndexChanged := p.selector.SelectNext()
+	if !nextIndexChanged {
 		return nil
 	}
 
