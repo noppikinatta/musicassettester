@@ -32,9 +32,8 @@ func (w *AudioContextWrapper) NewPlayer(stream io.Reader) (player.Player, error)
 
 // Game represents the Ebiten game
 type Game struct {
-	player      *player.MusicPlayer
-	warningText string
-	watcher     *files.DirectoryWatcher
+	player  *player.MusicPlayer
+	watcher *files.DirectoryWatcher
 }
 
 // NewGame creates a new game
