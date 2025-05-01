@@ -32,7 +32,7 @@ type Root struct {
 	player *player.MusicPlayer
 
 	// UI components (Value types for basicwidget again)
-	background basicwidget.Background
+	background         basicwidget.Background
 	musicList          basicwidget.TextList[string]
 	nowPlayingText     basicwidget.Text
 	timeText           basicwidget.Text
@@ -56,7 +56,7 @@ func NewRoot(player *player.MusicPlayer) *Root {
 }
 
 // Layout lays out the root widget
-func (r *Root) Build(context *guigui.Context, appender *guigui.ChildWidgetAppender) error{
+func (r *Root) Build(context *guigui.Context, appender *guigui.ChildWidgetAppender) error {
 	faceSources := []*text.GoTextFaceSource{
 		basicwidget.DefaultFaceSource(),
 	}
@@ -75,7 +75,6 @@ func (r *Root) Build(context *guigui.Context, appender *guigui.ChildWidgetAppend
 
 	appender.AppendChildWidgetWithBounds(&r.background, context.AppBounds())
 
-
 	// Configure Text widgets (Safe to call Setters here)
 	r.nowPlayingText.SetBold(true)
 	r.nowPlayingText.SetScale(1.5)
@@ -90,7 +89,7 @@ func (r *Root) Build(context *guigui.Context, appender *guigui.ChildWidgetAppend
 
 	// --- Position and Append Widgets ---
 	bounds := context.Bounds(r)
-	appSize:= context.AppSize() // Get root size
+	appSize := context.AppSize() // Get root size
 
 	const margin int = 8
 
@@ -129,12 +128,12 @@ func (r *Root) Build(context *guigui.Context, appender *guigui.ChildWidgetAppend
 	// ウィジェットの配置と追加
 	// Music List
 	appender.AppendChildWidgetWithBounds(
-		&r.musicList, 
-		image.Rect(bounds.Min.X+margin, 
+		&r.musicList,
+		image.Rect(bounds.Min.X+margin,
 			bounds.Min.Y+musicListY,
 			bounds.Min.X+margin+availableWidth,
 			bounds.Min.Y+musicListY+musicListHeight,
-			),
+		),
 	)
 
 	// Now Playing Text
