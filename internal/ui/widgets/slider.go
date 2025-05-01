@@ -45,6 +45,7 @@ func (s *Slider) SetValue(value float64) {
 
 	if s.value != value {
 		s.value = value
+		guigui.RequestRedraw(s)
 		if s.onChange != nil {
 			s.onChange(value)
 		}
@@ -54,6 +55,7 @@ func (s *Slider) SetValue(value float64) {
 // SetMinimum sets the minimum value of the slider.
 func (s *Slider) SetMinimum(min float64) {
 	s.minimum = min
+	guigui.RequestRedraw(s)
 	if s.value < min {
 		s.SetValue(min)
 	}
@@ -62,6 +64,7 @@ func (s *Slider) SetMinimum(min float64) {
 // SetMaximum sets the maximum value of the slider.
 func (s *Slider) SetMaximum(max float64) {
 	s.maximum = max
+	guigui.RequestRedraw(s)
 	if s.value > max {
 		s.SetValue(max)
 	}
@@ -81,6 +84,7 @@ func (s *Slider) Value() float64 {
 func (s *Slider) SetSize(width, height int) {
 	s.width = width
 	s.height = height
+	guigui.RequestRedraw(s)
 }
 
 // Size returns the size of the slider.
@@ -96,9 +100,18 @@ func (s *Slider) Draw(context *guigui.Context, dst *ebiten.Image) {
 	bgColor := color.RGBA{200, 200, 200, 255}
 	vector.DrawFilledRect(dst, float32(bounds.Min.X), float32(bounds.Min.Y), float32(bounds.Dx()), float32(bounds.Dy()), bgColor, false)
 
-	// Calculate handle position
+	// --- 元のハンドル描画 ---
 	valueRange := s.maximum - s.minimum
+	if valueRange == 0 {
+		valueRange = 1 // Or handle as a special case
+	}
 	valueRatio := (s.value - s.minimum) / valueRange
+	// Clamp valueRatio to avoid drawing outside bounds (just in case)
+	if valueRatio < 0 {
+		valueRatio = 0
+	} else if valueRatio > 1 {
+		valueRatio = 1
+	}
 	handleX := float32(bounds.Min.X) + float32(bounds.Dx())*float32(valueRatio)
 	handleY := float32(bounds.Min.Y)
 	handleWidth := float32(10)
@@ -107,6 +120,7 @@ func (s *Slider) Draw(context *guigui.Context, dst *ebiten.Image) {
 	// Draw handle
 	handleColor := color.RGBA{100, 100, 100, 255}
 	vector.DrawFilledRect(dst, handleX-handleWidth/2, handleY, handleWidth, handleHeight, handleColor, false)
+	// ---
 }
 
 // Layout lays out the slider.
