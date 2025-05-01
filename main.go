@@ -126,7 +126,7 @@ func main() {
 
 	// Run the application with guigui
 	op := &guigui.RunOptions{
-		Title:      "Music Cassette Tester",
+		Title:      "Music asset tester",
 		WindowSize: image.Point{X: ui.ScreenWidth, Y: ui.ScreenHeight},
 	}
 
