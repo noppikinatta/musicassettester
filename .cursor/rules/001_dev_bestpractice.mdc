@@ -1,0 +1,411 @@
+---
+description: this file explains best practices. please always refer to this file.
+globs: *
+alwaysApply: true
+---
+# 001_dev_bestpractice.mdc
+- When this file is loaded, the AI must inform the user by saying "001_dev_bestpractice.md has been loaded!" before starting any work.
+
+## Basic Principles
+Please follow these rules.
+
+### 1. Communication
+- Please communicate with users in the same language they use in their messages.
+
+### 2. Prevent Duplicate Implementation
+- Before implementation, please confirm:
+    - Existence of similar functionality
+    - Functions or components with same or similar names
+    - Duplicate API endpoints
+    - Identification of processes that can be shared
+
+--
+
+## Project Structure
+This project is a music asset testing program written in Go.
+
+## Desired Features
+
+Here is a list of features we want to implement.
+
+### Handling Missing Music Files
+
+Currently, when there are no music files or music directory, we only display an error message. We want to monitor the directory contents and start playing when music files are added.
+
+## Commit Messages
+
+Do not commit changes automatically. Instead, propose commit messages.
+
+### Creating Commit Messages
+
+When creating commit messages, follow these steps:
+
+1. Check Changes
+
+   ```bash
+   # Check untracked files and changes
+   git status
+
+   # Check change details
+   git diff
+
+   # Check commit message style
+   git log
+   ```
+
+2. Analyze Changes
+
+   - Identify changed or added files
+   - Understand the nature of changes (new features, bug fixes, refactoring, etc.)
+   - Evaluate impact on the project
+   - Check for sensitive information
+
+3. Create Commit Message
+
+   - Focus on "why"
+   - Use clear and concise language
+   - Accurately reflect the purpose of changes
+   - Avoid generic expressions
+
+### Important Notes
+
+Do not execute commits. Only create messages.
+
+### Commit Message Examples
+
+Write commit messages in English.
+
+Set the following emoji according to the most relevant type of commit:
+
+- ✨ Added new features
+- 🔧 Modified existing features
+- ♻️ Performed refactoring
+- 🩹 Fixed bugs
+- 🧪 Added or modified test code
+- 📝 Changed documentation
+
+```bash
+# Adding new features
+✨ Introduce Result type for error handling
+
+# Improving existing features
+🔧 Enhance cache performance
+
+# Bug fixes
+🩹 Fix expired authentication token handling
+
+# Refactoring
+♻️ Abstract external dependencies using Adapter pattern
+
+# Adding tests
+🧪 Add tests for error cases in Result type
+
+# Updating documentation
+📝 Add best practices for error handling
+```
+
+## Language and Libraries
+
+### Programming Language
+
+We use Go.
+
+### Libraries
+
+We use Guigui.
+
+https://github.com/hajimehoshi/guigui
+
+### Go Best Practices
+
+Here are best practices for effectively using Go. For details, refer to [Effective Go](mdc:https:/go.dev/doc/effective_go).
+
+#### Formatting
+
+- Use `gofmt` to format code in standard style
+- Use tabs for indentation
+- No line length limit, but break appropriately if too long
+- Control structures (`if`, `for`, `switch`) don't need parentheses
+
+#### Comments
+
+- Write comments in English as this is an OSS project
+- Use appropriate doc comments (`// comment`) for packages and public functions/types
+- Package documentation goes before package declaration
+- Comments immediately preceding declarations are considered documentation for that declaration
+
+#### Naming Conventions
+
+- **Package Names**: Single lowercase word. Avoid underscores and camelCase
+- **Variable Names**: Short and concise. Short names are fine for small scopes
+- **Interface Names**: Single-method interfaces typically end in `er` (e.g., `Reader`, `Writer`)
+- **Visibility**: Names starting with uppercase are exported, lowercase are unexported
+- **MixedCaps**: Use camelCase (`MixedCaps` or `mixedCaps`) for multi-word names, not underscores
+
+#### Code Structure
+
+- **Error Handling**: Return errors as values and handle them, don't ignore
+- **Early Return**: Return early when conditions are not met to reduce nesting
+- **defer**: Use defer statements for resource cleanup to ensure execution
+
+```go
+func CopyFile(src, dst string) error {
+    srcFile, err := os.Open(src)
+    if err != nil {
+        return err
+    }
+    defer srcFile.Close()
+
+    // Rest of processing...
+}
+```
+
+#### Concurrency
+
+- Goroutines are lightweight, use freely when needed but consider termination conditions
+- Use channels for communication between goroutines and coordinate shared memory access
+- Use `select` statements to efficiently handle multiple channel operations
+
+#### Interfaces
+
+- Small interfaces are optimal. Single-method interfaces are ideal
+- Interface implementation is implicit, no explicit declaration needed
+- Best practice is to define interfaces in the implementation side, not the accepting side
+
+#### Error Handling
+
+- Treat errors as simple values, not special like exceptions
+- Don't skip error checks, handle appropriately
+- Functions use multiple return values to return both results and errors
+
+```go
+func doSomething() (Result, error) {
+    // ...
+}
+
+result, err := doSomething()
+if err != nil {
+    // Error handling
+    return err
+}
+// Normal processing
+```
+
+#### Testing
+
+- Use standard `testing` package to create tests
+- Utilize table-driven tests to efficiently test multiple cases
+- Use benchmarking and profiling to measure and improve performance
+- Test code packages should have suffix `_test`. For example, test code for `foo` package should be in `foo_test` package
+
+## Test-Driven Development (TDD) Rules
+
+Test-Driven Development is a software development methodology where you write tests before writing code. This approach helps improve design quality, reduce bugs, and safely perform refactoring.
+
+## Basic TDD Cycle
+
+```mermaid
+flowchart LR
+    Red[Red: Write failing test] --> Green[Green: Write minimal implementation to pass]
+    Green --> Refactor[Refactor: Improve code]
+    Refactor --> Red
+```
+
+1. **Red**: First write a failing test
+
+   - Clearly define required functionality
+   - Express expected behavior in test code
+   - Test fails at this point (red)
+
+2. **Green**: Implement minimum code to pass test
+
+   - Write simplest implementation to pass test
+   - Prioritize functionality over performance or code beauty
+   - Test passes at this point (green)
+
+3. **Refactor**: Improve code through refactoring
+   - Eliminate duplication and organize code
+   - Improve readability and maintainability
+   - Ensure tests still pass
+
+## Important TDD Concepts
+
+- **Tests are Specifications**: Test code expresses implementation specifications
+- **Think "What" First, Then "How"**: Use tests to clarify "what" should be achieved before thinking about "how" to implement
+- **Progress in Small Steps**: Don't make big changes at once, proceed step by step
+- **Focus on Intent Coverage Over Line Coverage**: Don't just cover code lines, accurately test business logic intent
+
+## Test Structure Principles
+
+### Table-Driven Tests
+
+In Go, using table-driven tests is recommended:
+
+```go
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name     string
+        a, b     int
+        expected int
+    }{
+        {
+            name:     "Adding positive numbers",
+            a:        2,
+            b:        3,
+            expected: 5,
+        },
+        {
+            name:     "Adding negative numbers",
+            a:        -2,
+            b:        -3,
+            expected: -5,
+        },
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := Add(tt.a, tt.b)
+            if result != tt.expected {
+                t.Errorf("Add(%d, %d) = %d; want %d", tt.a, tt.b, result, tt.expected)
+            }
+        })
+    }
+}
+```
+
+### Test Name Conventions
+
+Good test names follow the "situation → operation → result" format:
+
+```go
+func TestUserService_ShouldReturnUserWhenValidIDIsProvided(t *testing.T) {
+    // Test body
+}
+```
+
+## Test Data
+
+In Go, if you create a `testdata` directory under a package, it's recognized as a test data location.
+Files and directories in the `testdata` directory can be accessed from test code using relative paths starting with `testdata`.
+
+## Mocks and Stubs
+
+Create unique mocks and stubs for each test code, don't share them. This is to keep mock and stub functionality minimal and make tests robust.
+
+### Interface Mocking
+
+```go
+// UserRepository interface
+type UserRepository interface {
+    FindByID(id int) (*User, error)
+    Save(user *User) error
+}
+
+// Mock implementation
+type MockUserRepository struct {
+    mock.Mock
+}
+
+func (m *MockUserRepository) FindByID(id int) (*User, error) {
+    args := m.Called(id)
+    if args.Get(0) == nil {
+        return nil, args.Error(1)
+    }
+    return args.Get(0).(*User), args.Error(1)
+}
+
+// Test usage
+func TestUserService_FindByID(t *testing.T) {
+    mockRepo := new(MockUserRepository)
+    mockUser := &User{ID: 1, Name: "Test User"}
+    
+    mockRepo.On("FindByID", 1).Return(mockUser, nil)
+    
+    service := NewUserService(mockRepo)
+    user, err := service.FindByID(1)
+    
+    assert.NoError(t, err)
+    assert.Equal(t, mockUser, user)
+    mockRepo.AssertExpectations(t)
+}
+```
+
+### Test Helper Functions
+
+```go
+// Test utilities
+func createTestUser(t *testing.T) *User {
+    t.Helper()
+    return &User{
+        ID:       1,
+        Name:     "Test User",
+        Email:    "test@example.com",
+        IsActive: true,
+    }
+}
+
+func TestUserActivation(t *testing.T) {
+    user := createTestUser(t)
+    user.IsActive = false
+    // Rest of test
+}
+```
+
+## Code Coverage and Reporting
+
+### Measuring Go Test Coverage
+
+```bash
+# Run tests with coverage measurement
+go test -cover ./...
+
+# Generate coverage profile
+go test -coverprofile=coverage.out ./...
+
+# Generate and view HTML report
+go tool cover -html=coverage.out
+```
+
+## TDD Introduction and Habituation
+
+### Gradual TDD Migration
+
+1. **Start by Adding Tests to Existing Code**
+   - First add tests for important features or bug fixes
+
+2. **Apply TDD to New Feature Development**
+   - Use test-first approach when developing new features
+
+3. **Conduct TDD Sessions in Team**
+   - Practice TDD in pair programming or mob programming
+
+### Enhancing TDD with Git
+
+TDD cycle-aligned commit strategy:
+
+```bash
+# Red: Write failing test
+git add user/service_test.go
+git commit -m "🧪 Add user activation test"
+
+# Green: Implement and pass test
+git add user/service.go
+git commit -m "✨ Implement user activation"
+
+# Refactor: Improve code
+git add user/service.go
+git commit -m "♻️ Improve user activation logic"
+```
+
+## Summary
+
+Test-Driven Development is not just a methodology but an attitude that prioritizes quality and a process to get quick feedback. By making TDD a habit:
+
+1. **Improve Design Quality**: Clearly define required functionality and design clean APIs
+2. **Reduce Bugs**: Consider edge cases and error handling in advance
+3. **Ensure Safe Refactoring**: Improve code without breaking existing functionality
+4. **Increase Development Speed**: Though initially slower, efficiency improves through reduced bug fixing time
+5. **Value as Documentation**: Tests serve as living documentation showing specifications
+
+When developing new features or modifying existing code, remember to start with tests.
+
