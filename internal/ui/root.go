@@ -310,8 +310,8 @@ func (r *Root) CursorShape(context *guigui.Context) (ebiten.CursorShapeType, boo
 	return ebiten.CursorShapeDefault, true
 }
 
-// HandleInput handles global key presses
-func (r *Root) HandleInput(context *guigui.Context) guigui.HandleInputResult {
+// HandleButtonInput handles global key presses
+func (r *Root) HandleButtonInput(context *guigui.Context) guigui.HandleInputResult {
 	// Space key to toggle pause
 	if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
 		r.player.TogglePause()
