@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"sync"
 	"time"
@@ -22,6 +23,7 @@ import (
 type MusicSelector struct {
 	musicFiles   []string
 	currentIndex int
+	isRandom     bool
 	mu           sync.RWMutex
 }
 
@@ -29,7 +31,8 @@ type MusicSelector struct {
 func NewMusicSelector() *MusicSelector {
 	return &MusicSelector{
 		musicFiles:   make([]string, 0),
-		currentIndex: -1, // No initial selection
+		currentIndex: -1,    // No initial selection
+		isRandom:     false, // Default to sequential mode
 	}
 }
 
@@ -92,8 +95,13 @@ func (s *MusicSelector) Files() []string {
 }
 
 // SelectNext selects the next file in the list, looping back to the start if necessary.
+// If random mode is enabled, selects a random file instead.
 // Returns true if the index changed.
 func (s *MusicSelector) SelectNext() bool {
+	if s.isRandom {
+		return s.SelectRandomNext()
+	}
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -128,6 +136,51 @@ func (s *MusicSelector) CurrentIndex() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.currentIndex
+}
+
+// IsRandomMode returns whether random mode is enabled.
+func (s *MusicSelector) IsRandomMode() bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.isRandom
+}
+
+// SetRandomMode sets the random mode flag.
+func (s *MusicSelector) SetRandomMode(enabled bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.isRandom = enabled
+}
+
+// SelectRandomNext selects a random file from the list, avoiding the current index if possible.
+// Returns true if the index changed.
+func (s *MusicSelector) SelectRandomNext() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if len(s.musicFiles) == 0 {
+		s.currentIndex = -1
+		return false
+	}
+
+	if len(s.musicFiles) == 1 {
+		// Only one file, no choice but to stay on the same track
+		return false
+	}
+
+	oldIndex := s.currentIndex
+
+	// Generate random index that's different from current
+	var newIndex int
+	for {
+		newIndex = rand.Intn(len(s.musicFiles))
+		if newIndex != s.currentIndex {
+			break
+		}
+	}
+
+	s.currentIndex = newIndex
+	return oldIndex != s.currentIndex
 }
 
 // --- MusicLoader ---
@@ -384,6 +437,16 @@ func (p *MusicPlayer) SetIntervalSeconds(seconds float64) {
 // GetCurrentIndex returns the current selection index from the selector.
 func (p *MusicPlayer) GetCurrentIndex() int {
 	return p.selector.CurrentIndex()
+}
+
+// IsRandomMode returns whether random mode is enabled.
+func (p *MusicPlayer) IsRandomMode() bool {
+	return p.selector.IsRandomMode()
+}
+
+// SetRandomMode sets the random mode flag.
+func (p *MusicPlayer) SetRandomMode(enabled bool) {
+	p.selector.SetRandomMode(enabled)
 }
 
 // SetCurrentIndex selects the music at the given index using the selector.

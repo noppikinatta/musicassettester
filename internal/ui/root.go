@@ -326,6 +326,11 @@ func (r *Root) HandleButtonInput(context *guigui.Context) guigui.HandleInputResu
 		return guigui.HandleInputByWidget(r) // Input handled by this widget
 	}
 
+	if inpututil.IsKeyJustPressed(ebiten.KeyR) {
+		r.player.SetRandomMode(!r.player.IsRandomMode())
+		return guigui.HandleInputByWidget(r) // Input handled by this widget
+	}
+
 	// If not handled, return zero value to let guigui propagate to children
 	return guigui.HandleInputResult{}
 }

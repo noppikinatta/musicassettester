@@ -255,3 +255,98 @@ func TestUpdate(t *testing.T) {
 		t.Errorf("Expected state to be StateStopped after Close, got %v", p.GetState())
 	}
 }
+
+func TestRandomSelection(t *testing.T) {
+	p, _ := createTestMusicPlayer(t)
+
+	// Verify default random flag is false
+	if p.IsRandomMode() {
+		t.Error("Expected random mode to be false by default")
+	}
+
+	// Enable random mode
+	p.SetRandomMode(true)
+	if !p.IsRandomMode() {
+		t.Error("Expected random mode to be true after setting")
+	}
+
+	// Disable random mode
+	p.SetRandomMode(false)
+	if p.IsRandomMode() {
+		t.Error("Expected random mode to be false after disabling")
+	}
+}
+
+func TestSkipToNextRandom(t *testing.T) {
+	// Create test player with multiple files
+	testFiles := []string{
+		"testdata/test1.wav",
+		"testdata/test2.wav",
+	}
+
+	mockFactory := NewMockPlayerFactory()
+	p, err := player.NewMusicPlayer(testFiles, mockFactory)
+	if err != nil {
+		t.Logf("Warning during player creation: %v", err)
+	}
+
+	if len(p.GetMusicFiles()) < 2 {
+		t.Skip("Need at least 2 music files for random selection test")
+	}
+
+	// Set initial index
+	err = p.SetCurrentIndex(0)
+	if err != nil {
+		t.Fatalf("Failed to set initial index: %v", err)
+	}
+
+	// Test sequential mode (default)
+	initialIndex := p.GetCurrentIndex()
+	err = p.SkipToNext()
+	if err != nil {
+		t.Errorf("SkipToNext failed: %v", err)
+	}
+	sequentialIndex := p.GetCurrentIndex()
+	expectedSequential := (initialIndex + 1) % len(p.GetMusicFiles())
+	if sequentialIndex != expectedSequential {
+		t.Errorf("Expected sequential index %d, got %d", expectedSequential, sequentialIndex)
+	}
+
+	// Enable random mode
+	p.SetRandomMode(true)
+
+	// Reset to initial position
+	err = p.SetCurrentIndex(0)
+	if err != nil {
+		t.Fatalf("Failed to reset index: %v", err)
+	}
+
+	// Test random selection - with 2 files, it should always alternate
+	previousIndex := p.GetCurrentIndex()
+	err = p.SkipToNext()
+	if err != nil {
+		t.Errorf("SkipToNext failed: %v", err)
+	}
+	currentIndex := p.GetCurrentIndex()
+
+	// With only 2 files, random should pick the other file
+	if currentIndex == previousIndex {
+		t.Errorf("Random selection should pick different file. Previous: %d, Current: %d", previousIndex, currentIndex)
+	}
+
+	// Test a few more times to ensure it works consistently
+	for i := 0; i < 3; i++ {
+		previousIndex = p.GetCurrentIndex()
+		err = p.SkipToNext()
+		if err != nil {
+			t.Errorf("SkipToNext failed on iteration %d: %v", i, err)
+		}
+		newIndex := p.GetCurrentIndex()
+		if newIndex < 0 || newIndex >= len(p.GetMusicFiles()) {
+			t.Errorf("Random selection produced invalid index: %d", newIndex)
+		}
+		if newIndex == previousIndex {
+			t.Errorf("Random selection should avoid repeating same index. Previous: %d, Current: %d", previousIndex, newIndex)
+		}
+	}
+}
