@@ -23,17 +23,14 @@ func TestMain(m *testing.M) {
 
 // Helper function to create a test MusicPlayer
 func createTestMusicPlayer(t *testing.T) (*player.MusicPlayer, *MockPlayerFactory) {
-	// Create a temporary directory for the test (still useful for file paths)
-	tempDir, err := os.MkdirTemp("", "music-test-") // Added suffix for clarity
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { os.RemoveAll(tempDir) })
+	// Use testdata directory with actual audio files
+	testDataDir := "testdata"
 
-	// Define initial test files (paths only, files aren't created here)
+	// Define initial test files (actual files in testdata directory)
+	// Use WAV files only to avoid mp3 layer compatibility issues
 	initialFiles := []string{
-		filepath.Join(tempDir, "test1.mp3"),
-		filepath.Join(tempDir, "test2.wav"),
+		filepath.Join(testDataDir, "test1.wav"),
+		filepath.Join(testDataDir, "test2.wav"),
 	}
 
 	// Create mock factory

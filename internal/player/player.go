@@ -325,6 +325,9 @@ func (p *MusicPlayer) Close() error {
 		}
 		p.currentMusic = nil
 	}
+	// Set state to stopped and reset pause state
+	p.state = StateStopped
+	p.isPaused = false
 	// audioStream might be managed by the player, but explicit close is safer if needed
 	// if closer, ok := p.audioStream.(io.Closer); ok {
 	// 	 closer.Close()
@@ -475,7 +478,16 @@ func (p *MusicPlayer) TogglePause() {
 
 // Update updates the player state
 func (p *MusicPlayer) Update() error {
-	p.counter++
+	// Only increment counter if we have music and it's not paused
+	if p.currentMusic != nil && !p.isPaused {
+		p.counter++
+	}
+
+	// If no current music, ensure we're in stopped state
+	if p.currentMusic == nil {
+		p.state = StateStopped
+		return nil
+	}
 
 	switch p.state {
 	case StatePlaying:
