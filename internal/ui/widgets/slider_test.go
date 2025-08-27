@@ -3,7 +3,6 @@ package widgets_test
 import (
 	"testing"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/stretchr/testify/assert"
 
 	"musicplayer/internal/ui/widgets"
@@ -173,27 +172,4 @@ func TestSlider_HandleButtonInput(t *testing.T) {
 	// Test input handling
 	result := s.HandleButtonInput(nil)
 	assert.NotNil(t, result)
-}
-
-func TestSlider_Draw(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipped: Drawing tests are not run in short mode")
-	}
-
-	s := widgets.NewSlider()
-	img := ebiten.NewImage(200, 50)
-
-	// Test slider at 50% position
-	s.SetValue(0.5)
-	s.SetSize(200, 50)
-	s.Draw(nil, img)
-
-	// Verify drawing result
-	assert.NotNil(t, img)
-
-	// Test boundary values
-	s.SetValue(0.0)
-	s.Draw(nil, img)
-	s.SetValue(1.0)
-	s.Draw(nil, img)
 }

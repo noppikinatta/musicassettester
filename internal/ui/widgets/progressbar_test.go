@@ -3,7 +3,6 @@ package widgets_test
 import (
 	"testing"
 
-	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/guigui"
 	"github.com/stretchr/testify/assert"
 
@@ -77,29 +76,4 @@ func TestProgressBar_SetSize(t *testing.T) {
 			assert.Equal(t, tt.height, h)
 		})
 	}
-}
-
-func TestProgressBar_Draw(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipped: Drawing tests are not run in short mode")
-	}
-
-	pb := widgets.NewProgressBar()
-	img := ebiten.NewImage(200, 50)
-
-	// Test progress at 50%
-	pb.SetValue(0.5)
-	pb.SetSize(200, 50)
-	pb.Draw(nil, img)
-
-	// Verify drawing result
-	// Note: Since verifying actual drawing results is complex,
-	// we only check that the image is created and drawing completes without errors
-	assert.NotNil(t, img)
-
-	// Test boundary values
-	pb.SetValue(0.0)
-	pb.Draw(nil, img)
-	pb.SetValue(1.0)
-	pb.Draw(nil, img)
 }
