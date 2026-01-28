@@ -224,9 +224,9 @@ func (r *Root) updateCurrentMusicState() {
 		}
 		r.nowPlayingText.SetText(statusText) // Call method on value
 
-		// 選択状態の更新はここでは行わない (無限ループの原因)
-		// currentIndex := r.player.GetCurrentIndex()
-		// r.musicList.SetSelectedItemIndex(currentIndex)
+		// Update the list selection to match the player's current track
+		currentIndex := r.player.GetCurrentIndex()
+		r.musicList.SelectItemByIndex(currentIndex)
 	} else {
 		r.nowPlayingText.SetText("No track playing. Locate music files in musics/ directory.")
 	}
@@ -255,8 +255,11 @@ func (r *Root) initialize() {
 	r.musicList.SetOnItemSelected(func(index int) {
 		musicFiles := r.player.GetMusicFiles()
 		if index >= 0 && index < len(musicFiles) {
-			if err := r.player.SetCurrentIndex(index); err != nil {
-				log.Printf("Failed to set current index: %v", err)
+			// Only update player if the index is different to avoid unnecessary reloads
+			if r.player.GetCurrentIndex() != index {
+				if err := r.player.SetCurrentIndex(index); err != nil {
+					log.Printf("Failed to set current index: %v", err)
+				}
 			}
 		}
 	})
